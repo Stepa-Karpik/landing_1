@@ -1,12 +1,16 @@
+﻿export interface TeamLink {
+  label: string
+  url: string
+}
+
 export interface TeamMember {
   id: string
   name: string
   role: string
+  focus: string
   stack: string[]
-  description: string
-  achievement?: string
-  photo: string
-  links: { label: string; url: string; icon: "github" | "telegram" | "figma" | "portfolio" | "email" }[]
+  achievement: string
+  links: TeamLink[]
 }
 
 export interface Project {
@@ -19,128 +23,205 @@ export interface Project {
 }
 
 export interface TimelineEvent {
-  year: string
+  period: string
   title: string
+  result: string
   description: string
 }
 
+export interface MetricItem {
+  value: number
+  suffix: string
+  label: string
+}
+
+export interface SystemPillar {
+  title: string
+  description: string
+  icon: "brain" | "backend" | "ux" | "rocket"
+}
+
+export const teamName = "TEAM NERIOR"
+
+export const heroContent = {
+  eyebrow: "Продуктовая команда для хакатонов и MVP",
+  titleTop: "TEAM NERIOR",
+  titleBottom: "Превращаем идеи в работающие системы",
+  subtitle:
+    "Проектируем, собираем и запускаем AI-продукты в сжатые сроки. Без шума. Без эго. Только результат.",
+}
+
+export const heroSignals = ["AI-архитектура", "Backend-системы", "Быстрый прототип", "Готовый запуск"]
+
+export const systemPillars: SystemPillar[] = [
+  {
+    title: "AI и архитектура",
+    description: "Проектируем понятные AI-флоу, устойчивые сервисы и технический фундамент под рост.",
+    icon: "brain",
+  },
+  {
+    title: "Backend-системы",
+    description: "Собираем масштабируемые API, модели данных и инфраструктуру с первого релиза.",
+    icon: "backend",
+  },
+  {
+    title: "Продукт и UX",
+    description: "Фокусируемся на логике продукта, чистом интерфейсе и понятном пользовательском пути.",
+    icon: "ux",
+  },
+  {
+    title: "Быстрый деплой",
+    description: "От идеи до production-ready MVP за дни: с CI, метриками и готовностью к демонстрации.",
+    icon: "rocket",
+  },
+]
+
 export const teamMembers: TeamMember[] = [
   {
-    id: "karpov",
-    name: "Карпов Степан",
-    role: "Team Lead",
-    stack: ["Python", "React", "JavaScript", "Node.js", "TypeScript", "C++", "aiogram", "UI/UX", "Figma"],
-    description: "Лидер команды с широким стеком и опытом организации продуктовой разработки от идеи до деплоя.",
-    achievement: "Победитель хакатона UMIRhack 2025",
-    photo: "/team/Karpov_Stepan.png",
+    id: "stepan-karpov",
+    name: "Степан Карпов",
+    role: "Лид команды",
+    focus: "Архитектура, управление доставкой и продуктовая стратегия.",
+    stack: ["Python", "React", "TypeScript", "Node.js", "Design Systems"],
+    achievement: "Победитель UMIRhack 2025",
     links: [
-      { label: "GitHub", url: "https://github.com/", icon: "github" },
-      { label: "Telegram", url: "https://t.me/", icon: "telegram" },
+      { label: "GitHub", url: "https://github.com" },
+      { label: "Telegram", url: "https://t.me" },
     ],
   },
   {
-    id: "bogdan",
-    name: "Богдан Владислав",
-    role: "Предприниматель / Backend",
-    stack: ["Python", "FastAPI", "PostgreSQL", "Management", "Business Development"],
-    description: "Индивидуальный предприниматель с опытом управления продуктами и delivery. Совмещает бизнес-видение с инженерной реализацией.",
-    photo: "/team/Bogdan_Vladislav.png",
+    id: "vladislav-bogdan",
+    name: "Владислав Богдан",
+    role: "Backend и продукт",
+    focus: "Экономика продукта, backend-реализация и формализация клиентских требований.",
+    stack: ["Python", "FastAPI", "PostgreSQL", "Product Discovery"],
+    achievement: "3 коммерческих MVP менее чем за 14 дней",
     links: [
-      { label: "GitHub", url: "https://github.com/", icon: "github" },
-      { label: "Telegram", url: "https://t.me/", icon: "telegram" },
+      { label: "GitHub", url: "https://github.com" },
+      { label: "LinkedIn", url: "https://linkedin.com" },
     ],
   },
   {
-    id: "kuznetsova",
-    name: "Кузнецова Владислава",
-    role: "Backend разработчик",
-    stack: ["Python", "FastAPI", "PostgreSQL", "Docker", "REST API"],
-    description: "Backend-инженер с фокусом на чистую архитектуру и надёжные API. Опыт в проектировании и поддержке серверной логики.",
-    photo: "/team/Kuznetsova_Vladislava.png",
+    id: "vladislava-kuznetsova",
+    name: "Владислава Кузнецова",
+    role: "Backend-инженер",
+    focus: "Качество API, надежность сервисов и оптимизация производительности.",
+    stack: ["Python", "FastAPI", "PostgreSQL", "Docker", "REST"],
+    achievement: "Проектировала отказоустойчивые API для мультисервисных решений",
     links: [
-      { label: "GitHub", url: "https://github.com/", icon: "github" },
+      { label: "GitHub", url: "https://github.com" },
+      { label: "Telegram", url: "https://t.me" },
     ],
   },
   {
-    id: "popova",
-    name: "Попова Татьяна",
+    id: "tatyana-popova",
+    name: "Татьяна Попова",
     role: "iOS разработчик",
-    stack: ["Swift", "SwiftUI", "UIKit", "Xcode", "iOS"],
-    description: "Мобильный разработчик, специализирующийся на создании нативных iOS-приложений с фокусом на UX и производительность.",
-    photo: "/team/Popova_Tatyana.png",
+    focus: "Нативные мобильные интерфейсы с приоритетом на UX и производительность.",
+    stack: ["Swift", "SwiftUI", "UIKit", "Xcode"],
+    achievement: "Запускала мобильные фичи в хакатонных продуктах",
     links: [
-      { label: "GitHub", url: "https://github.com/", icon: "github" },
+      { label: "GitHub", url: "https://github.com" },
+      { label: "LinkedIn", url: "https://linkedin.com" },
     ],
   },
   {
-    id: "mikhailov",
-    name: "Михайлов Роман",
+    id: "roman-mikhailov",
+    name: "Роман Михайлов",
     role: "Android разработчик",
+    focus: "Composable Android-архитектура и быстрый релиз пользовательских модулей.",
     stack: ["Kotlin", "Jetpack Compose", "Android SDK", "Firebase"],
-    description: "Android-инженер с опытом создания современных мобильных приложений на Kotlin и Jetpack Compose.",
-    photo: "/team/Mikhailov_Roman.png",
+    achievement: "Собирал Android MVP-модули в 48-часовых спринтах",
     links: [
-      { label: "GitHub", url: "https://github.com/", icon: "github" },
+      { label: "GitHub", url: "https://github.com" },
+      { label: "Telegram", url: "https://t.me" },
     ],
   },
   {
-    id: "linevich",
-    name: "Линевич Егор",
+    id: "egor-linevich",
+    name: "Егор Линевич",
     role: "Frontend разработчик",
-    stack: ["React", "TypeScript", "Next.js", "TailwindCSS", "JavaScript"],
-    description: "Frontend-инженер с фокусом на современные веб-технологии, анимации и отзывчивые интерфейсы.",
-    photo: "/team/Linevich_Egor.png",
+    focus: "High-fidelity интерфейсы, motion-дизайн и высокая скорость реализации.",
+    stack: ["React", "Next.js", "TypeScript", "Tailwind CSS"],
+    achievement: "Проектировал и внедрял премиальные лендинги и продуктовые UI",
     links: [
-      { label: "GitHub", url: "https://github.com/", icon: "github" },
+      { label: "GitHub", url: "https://github.com" },
+      { label: "Портфолио", url: "https://example.com" },
     ],
   },
 ]
 
+export const techStackTags = [
+  "Python",
+  "FastAPI",
+  "React",
+  "TypeScript",
+  "Next.js",
+  "Node.js",
+  "PostgreSQL",
+  "Docker",
+  "Kubernetes",
+  "Redis",
+  "AI Inference",
+  "LLM Ops",
+  "CI/CD",
+  "Design Systems",
+  "Figma",
+  "DevOps",
+]
+
 export const projects: Project[] = [
   {
-    id: "proj-1",
-    title: "AI Assistant Platform",
-    description: "Платформа интеллектуальных ассистентов с естественным языковым интерфейсом и интеграцией внешних сервисов.",
-    stack: ["Python", "FastAPI", "React", "TypeScript"],
+    id: "signalops-ai",
+    title: "SignalOps AI",
+    description:
+      "Платформа операционной аналитики с AI-триажем инцидентов и actionable-инсайтами для команды.",
+    stack: ["FastAPI", "React", "PostgreSQL", "Docker"],
     demoUrl: "#",
     githubUrl: "#",
   },
   {
-    id: "proj-2",
-    title: "FinTrack Mobile",
-    description: "Мобильное приложение для учёта личных финансов с аналитикой и прогнозированием расходов.",
-    stack: ["Kotlin", "Swift", "Firebase"],
+    id: "trust-wallet-core",
+    title: "Trust Wallet Core",
+    description:
+      "Fintech-ready backend для безопасной идентификации, транзакций и аудируемого управления доступом.",
+    stack: ["Python", "FastAPI", "PostgreSQL", "Redis"],
     demoUrl: "#",
     githubUrl: "#",
   },
   {
-    id: "proj-3",
-    title: "TaskFlow",
-    description: "Система управления задачами с канбан-досками, автоматизацией и командной аналитикой.",
-    stack: ["Next.js", "PostgreSQL", "Docker"],
+    id: "neonflow-mobile",
+    title: "NeonFlow Mobile",
+    description:
+      "Мобильное приложение для продуктовой телеметрии, live-метрик и синхронизации работы команды.",
+    stack: ["Swift", "Kotlin", "Firebase"],
     demoUrl: "#",
     githubUrl: "#",
   },
   {
-    id: "proj-4",
-    title: "SecureAPI Gateway",
-    description: "API-шлюз с авторизацией, rate limiting и мониторингом для микросервисной архитектуры.",
-    stack: ["Node.js", "Docker", "PostgreSQL"],
-    githubUrl: "#",
-  },
-  {
-    id: "proj-5",
-    title: "EventHub",
-    description: "Платформа для организации мероприятий с регистрацией, расписанием и push-уведомлениями.",
-    stack: ["React", "Python", "FastAPI", "iOS"],
+    id: "quantboard",
+    title: "QuantBoard",
+    description:
+      "Дашборд реального времени для экспериментов, growth-циклов и принятия продуктовых решений.",
+    stack: ["Next.js", "TypeScript", "D3", "Node.js"],
     demoUrl: "#",
     githubUrl: "#",
   },
   {
-    id: "proj-6",
-    title: "DataViz Dashboard",
-    description: "Интерактивный дашборд для визуализации бизнес-метрик в реальном времени.",
-    stack: ["React", "TypeScript", "D3.js"],
+    id: "deploybridge",
+    title: "DeployBridge",
+    description:
+      "Слой релиз-менеджмента с оценкой health пайплайнов, rollback-логикой и контролем окружений.",
+    stack: ["Go", "PostgreSQL", "Docker", "Kubernetes"],
+    demoUrl: "#",
+    githubUrl: "#",
+  },
+  {
+    id: "vaultguard-api",
+    title: "VaultGuard API",
+    description:
+      "Security-first API-шлюз с политиками токенов, request fingerprinting и интеллектуальной маршрутизацией.",
+    stack: ["Node.js", "TypeScript", "Redis", "DevOps"],
     demoUrl: "#",
     githubUrl: "#",
   },
@@ -148,67 +229,99 @@ export const projects: Project[] = [
 
 export const timelineEvents: TimelineEvent[] = [
   {
-    year: "2025",
-    title: "UMIRhack 2025 -- Победа",
-    description: "Первое место на хакатоне. Полный цикл от идеи до работающего прототипа за 48 часов.",
+    period: "2024",
+    title: "Старт хакатонного трека",
+    result: "Финалисты первого крупного турнира",
+    description:
+      "Проверили процесс в режиме дедлайна и собрали полноценное демо с архитектурным каркасом.",
   },
   {
-    year: "2025",
-    title: "Коммерческие MVP",
-    description: "Быстрые запуски продуктов для реальных клиентов с деплоем и поддержкой.",
+    period: "2025",
+    title: "UMIRhack",
+    result: "1 место",
+    description:
+      "Спроектировали и защитили полноценный прототип за 48 часов: backend, UX и финальный питч.",
   },
   {
-    year: "2024",
-    title: "Системы с деплоем",
-    description: "Разработка и поддержка production-систем с CI/CD, мониторингом и масштабированием.",
+    period: "2025",
+    title: "Коммерческий спринт",
+    result: "MVP за 14 дней",
+    description:
+      "Собрали и выкатили production-ready MVP для реального клиента с мониторингом и поддержкой.",
   },
-]
-
-export const competencies = [
-  { title: "Backend", description: "Python, FastAPI, Node.js, REST API, микросервисы" },
-  { title: "Frontend", description: "React, Next.js, TypeScript, TailwindCSS" },
-  { title: "Mobile", description: "iOS (Swift), Android (Kotlin), кроссплатформа" },
-  { title: "UI/UX", description: "Figma, дизайн-системы, прототипирование" },
-  { title: "Security", description: "Аудит, авторизация, защита API" },
-  { title: "DevOps", description: "Docker, CI/CD, мониторинг, деплой" },
-]
-
-export const techTags = [
-  "Python", "FastAPI", "React", "TypeScript", "Node.js",
-  "PostgreSQL", "Docker", "iOS", "Kotlin", "Figma",
-  "UI/UX", "aiogram", "Security", "Next.js", "TailwindCSS",
-  "Swift", "C++", "Firebase", "REST API", "Git",
+  {
+    period: "2026",
+    title: "Расширение AI-направления",
+    result: "Параллельная работа над несколькими проектами",
+    description:
+      "Масштабировали процесс без потери скорости и качества архитектурных решений.",
+  },
 ]
 
 export const whyUsItems = [
-  { title: "Быстро собираем MVP", description: "От идеи до работающего продукта за считанные дни" },
-  { title: "Сильная инженерная база", description: "Глубокие знания архитектуры и best practices" },
-  { title: "Чистый UX и дизайн", description: "Продуманные интерфейсы с дизайн-системой" },
-  { title: "Деплой и прод-готовность", description: "CI/CD, мониторинг, масштабирование" },
-  { title: "Предпринимательский подход", description: "Бизнес-мышление в каждом решении" },
-  { title: "Скорость коммуникации", description: "Командная ответственность и прозрачность" },
+  {
+    title: "Релиз за дни, а не недели",
+    description: "Короткие итерации, практичный scope и стабильный темп поставки результата.",
+  },
+  {
+    title: "Архитектура прежде всего",
+    description: "Проектируем систему так, чтобы она росла вместе с продуктом без постоянных переписок.",
+  },
+  {
+    title: "Продакшен-мышление",
+    description: "CI, мониторинг и дисциплина деплоя заложены в базовый процесс разработки.",
+  },
+  {
+    title: "Чистый UX и сильный backend",
+    description: "Интерфейсы выглядят дорого и работают стабильно даже под нагрузкой.",
+  },
+  {
+    title: "Командная ответственность",
+    description: "Работаем как единая система и закрываем весь цикл от идеи до запуска.",
+  },
 ]
+
+export const metrics: MetricItem[] = [
+  { value: 12, suffix: "+", label: "Запущенных проектов" },
+  { value: 5, suffix: "", label: "Пройденных хакатонов" },
+  { value: 3, suffix: "", label: "MVP быстрее 2 недель" },
+  { value: 2000, suffix: "+", label: "Коммитов в GitHub" },
+  { value: 500, suffix: "+", label: "Stars сообщества" },
+]
+
+export const cultureStatement =
+  "Мы ценим скорость, ответственность и глубокое техническое мышление. Без эго. Только исполнение."
 
 export const cultureValues = [
-  "Скорость без хаоса",
-  "Качество в деталях",
-  "Честная коммуникация",
-  "Ответственность за результат",
-  "Продуктовое мышление",
+  "Ясность вместо шума",
+  "Быстрые циклы, чистый результат",
+  "Решения для реальных пользователей",
+  "Системное мышление в каждом спринте",
 ]
 
-export const metrics = [
-  { value: 6, label: "участников", suffix: "" },
-  { value: 10, label: "проектов", suffix: "+" },
-  { value: 5, label: "хакатонов", suffix: "+" },
-  { value: 120, label: "недель прод-опыта", suffix: "+" },
+export const contactLinks = [
+  {
+    label: "GitHub команды",
+    value: "github.com/nerior",
+    href: "https://github.com",
+  },
+  {
+    label: "Telegram",
+    value: "@nerior_team",
+    href: "https://t.me",
+  },
+  {
+    label: "Email",
+    value: "team@nerior.store",
+    href: "mailto:team@nerior.store",
+  },
 ]
 
 export const navItems = [
   { label: "О команде", href: "#about" },
-  { label: "Компетенции", href: "#competencies" },
   { label: "Участники", href: "#team" },
+  { label: "Стек", href: "#stack" },
   { label: "Проекты", href: "#projects" },
-  { label: "Опыт", href: "#experience" },
+  { label: "Таймлайн", href: "#timeline" },
   { label: "Контакты", href: "#contacts" },
 ]

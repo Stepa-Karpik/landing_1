@@ -1,53 +1,61 @@
-"use client"
+﻿"use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useInView } from "framer-motion"
 import { metrics } from "@/lib/data"
 import { SectionReveal } from "./section-reveal"
 
-function CountUp({ target, suffix, duration = 2000 }: { target: number; suffix: string; duration?: number }) {
+function CountUp({ value, suffix, duration = 1600 }: { value: number; suffix: string; duration?: number }) {
   const [count, setCount] = useState(0)
-  const ref = useRef<HTMLSpanElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-50px" })
+  const markerRef = useRef<HTMLSpanElement>(null)
   const startedRef = useRef(false)
+  const isInView = useInView(markerRef, { once: true, margin: "-80px" })
 
   useEffect(() => {
     if (!isInView || startedRef.current) return
     startedRef.current = true
 
-    const start = performance.now()
+    const startedAt = performance.now()
+
     const step = (now: number) => {
-      const progress = Math.min((now - start) / duration, 1)
+      const progress = Math.min((now - startedAt) / duration, 1)
       const eased = 1 - Math.pow(1 - progress, 4)
-      setCount(Math.round(target * eased))
+      setCount(Math.round(value * eased))
       if (progress < 1) requestAnimationFrame(step)
     }
+
     requestAnimationFrame(step)
-  }, [isInView, target, duration])
+  }, [duration, isInView, value])
 
   return (
-    <span ref={ref}>
-      {count}{suffix}
+    <span ref={markerRef}>
+      {count.toLocaleString()}
+      {suffix}
     </span>
   )
 }
 
 export function MetricsSection() {
   return (
-    <section className="relative py-32 md:py-40">
+    <section className="relative py-28 md:py-40">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-          {metrics.map((metric, i) => (
-            <SectionReveal key={metric.label} delay={0.1 * i}>
-              <div className="text-center">
-                <div className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
-                  <CountUp target={metric.value} suffix={metric.suffix} />
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">{metric.label}</p>
-              </div>
-            </SectionReveal>
-          ))}
-        </div>
+        <SectionReveal>
+          <div className="glass rounded-3xl px-6 py-10 md:px-10 md:py-12">
+            <p className="text-center text-xs tracking-[0.2em] text-cyan-100/74 uppercase">Метрики команды</p>
+            <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-5">
+              {metrics.map((metric, index) => (
+                <SectionReveal key={metric.label} delay={index * 0.08}>
+                  <article className="text-center">
+                    <p className="font-display text-5xl leading-none tracking-tight text-white md:text-6xl lg:text-7xl">
+                      <CountUp value={metric.value} suffix={metric.suffix} />
+                    </p>
+                    <p className="mt-3 text-xs tracking-[0.12em] text-white/56 uppercase">{metric.label}</p>
+                  </article>
+                </SectionReveal>
+              ))}
+            </div>
+          </div>
+        </SectionReveal>
       </div>
     </section>
   )

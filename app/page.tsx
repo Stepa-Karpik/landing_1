@@ -19,8 +19,8 @@ export default function Page() {
       <div className="relative z-10">
         <HeroSection />
         <AboutSection />
-        <CompetenciesSection />
         <TeamSection />
+        <CompetenciesSection />
         <ProjectsSection />
         <TimelineSection />
         <WhyUsSection />

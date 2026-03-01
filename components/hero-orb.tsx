@@ -1,119 +1,94 @@
-"use client"
+﻿"use client"
 
 import { motion } from "framer-motion"
 
+const particles = [
+  { x: "16%", y: "28%", delay: 0.2, duration: 5.8 },
+  { x: "34%", y: "18%", delay: 1, duration: 6.8 },
+  { x: "70%", y: "23%", delay: 1.8, duration: 6.2 },
+  { x: "82%", y: "48%", delay: 0.7, duration: 5.6 },
+  { x: "64%", y: "72%", delay: 1.6, duration: 6.6 },
+  { x: "26%", y: "76%", delay: 2.1, duration: 6.4 },
+]
+
 export function HeroOrb() {
   return (
-    <div className="relative w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96">
-      {/* Outer ring */}
+    <div className="relative h-[280px] w-[280px] md:h-[380px] md:w-[380px] lg:h-[460px] lg:w-[460px]">
       <motion.div
-        className="absolute inset-0 rounded-full border border-white/[0.08]"
+        className="absolute inset-0 rounded-full border border-white/10"
         animate={{ rotate: 360 }}
         transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
       />
 
-      {/* Middle glow ring */}
       <motion.div
-        className="absolute inset-4 rounded-full border border-white/[0.05]"
+        className="absolute inset-[8%] rounded-full border border-cyan-200/20"
         animate={{ rotate: -360 }}
-        transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
-      >
-        {/* Node dots on ring */}
-        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white/20" />
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white/10" />
-        <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 rounded-full bg-white/15" />
-        <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 rounded-full bg-white/10" />
-      </motion.div>
-
-      {/* Inner orb - breathing */}
-      <motion.div
-        className="absolute inset-12 md:inset-16 rounded-full"
-        style={{
-          background: "radial-gradient(circle at 30% 30%, rgba(160,230,200,0.15), rgba(100,160,220,0.08), transparent 70%)",
-          boxShadow: "0 0 80px rgba(160,230,200,0.08), inset 0 0 60px rgba(100,160,220,0.05)",
-        }}
-        animate={{
-          scale: [1, 1.06, 1],
-          opacity: [0.8, 1, 0.8],
-        }}
-        transition={{
-          duration: 6,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
+        transition={{ duration: 95, repeat: Infinity, ease: "linear" }}
       />
 
-      {/* Core bright center */}
       <motion.div
-        className="absolute inset-[35%] md:inset-[30%] rounded-full"
-        style={{
-          background: "radial-gradient(circle, rgba(255,255,255,0.12), rgba(160,230,200,0.06), transparent 70%)",
-        }}
-        animate={{
-          scale: [1, 1.1, 1],
-          opacity: [0.6, 0.9, 0.6],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 0.5,
-        }}
+        className="absolute inset-[16%] rounded-full border border-white/10"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 36, repeat: Infinity, ease: "linear" }}
       />
 
-      {/* Bridge-like crossing lines */}
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 200">
-        <motion.line
-          x1="30" y1="100" x2="170" y2="100"
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth="0.5"
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.line
-          x1="60" y1="50" x2="140" y2="150"
-          stroke="rgba(160,230,200,0.05)"
-          strokeWidth="0.5"
-          animate={{ opacity: [0.2, 0.5, 0.2] }}
-          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        />
-        <motion.line
-          x1="60" y1="150" x2="140" y2="50"
-          stroke="rgba(160,230,200,0.05)"
-          strokeWidth="0.5"
-          animate={{ opacity: [0.2, 0.5, 0.2] }}
-          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        />
-        {/* Arc bridge */}
+      <motion.div
+        className="absolute inset-[21%] rounded-full"
+        style={{
+          background:
+            "radial-gradient(circle at 28% 24%, rgba(255,255,255,0.28), rgba(132,225,255,0.16) 42%, rgba(47,108,140,0.22) 72%, rgba(10,18,28,0.65) 100%)",
+          boxShadow:
+            "0 0 80px rgba(120, 220, 255, 0.32), inset 0 -25px 50px rgba(0, 0, 0, 0.4), inset 0 18px 48px rgba(255, 255, 255, 0.14)",
+        }}
+        animate={{ scale: [1, 1.05, 1], opacity: [0.92, 1, 0.92] }}
+        transition={{ duration: 7.8, repeat: Infinity, ease: "easeInOut" }}
+      />
+
+      <motion.div
+        className="absolute inset-[35%] rounded-full"
+        style={{
+          background: "radial-gradient(circle, rgba(255,255,255,0.68), rgba(180,241,255,0.5), rgba(180,241,255,0) 75%)",
+          filter: "blur(0.5px)",
+        }}
+        animate={{ scale: [1, 1.12, 1], opacity: [0.7, 0.95, 0.7] }}
+        transition={{ duration: 4.7, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+      />
+
+      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" fill="none" aria-hidden>
         <motion.path
-          d="M 40 120 Q 100 50 160 120"
-          fill="none"
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth="0.5"
-          animate={{ opacity: [0.2, 0.5, 0.2] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          d="M16 56 Q50 22 84 56"
+          stroke="rgba(255,255,255,0.18)"
+          strokeWidth="0.35"
+          animate={{ opacity: [0.18, 0.46, 0.18] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.path
+          d="M22 38 L78 62"
+          stroke="rgba(120,220,255,0.3)"
+          strokeWidth="0.3"
+          animate={{ opacity: [0.15, 0.42, 0.15] }}
+          transition={{ duration: 7.3, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+        />
+        <motion.path
+          d="M22 62 L78 38"
+          stroke="rgba(120,220,255,0.3)"
+          strokeWidth="0.3"
+          animate={{ opacity: [0.12, 0.36, 0.12] }}
+          transition={{ duration: 7.6, repeat: Infinity, ease: "easeInOut", delay: 1.1 }}
         />
       </svg>
 
-      {/* Floating particles */}
-      {[...Array(6)].map((_, i) => (
+      {particles.map((particle, index) => (
         <motion.div
-          key={i}
-          className="absolute w-1 h-1 rounded-full bg-white/20"
-          style={{
-            left: `${20 + Math.random() * 60}%`,
-            top: `${20 + Math.random() * 60}%`,
-          }}
-          animate={{
-            y: [0, -10 - Math.random() * 20, 0],
-            x: [0, Math.random() * 10 - 5, 0],
-            opacity: [0, 0.6, 0],
-          }}
+          key={index}
+          className="absolute h-1.5 w-1.5 rounded-full bg-cyan-100/80"
+          style={{ left: particle.x, top: particle.y }}
+          animate={{ y: [0, -10, 0], x: [0, 4, 0], opacity: [0.12, 0.9, 0.12], scale: [0.8, 1.2, 0.8] }}
           transition={{
-            duration: 4 + Math.random() * 4,
+            duration: particle.duration,
             repeat: Infinity,
             ease: "easeInOut",
-            delay: i * 0.8,
+            delay: particle.delay,
           }}
         />
       ))}

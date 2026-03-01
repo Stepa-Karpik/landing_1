@@ -1,34 +1,47 @@
-import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
-import './globals.css'
+﻿import type { Metadata, Viewport } from "next"
+import { Analytics } from "@vercel/analytics/next"
+import { Exo_2, JetBrains_Mono, Manrope } from "next/font/google"
+import "./globals.css"
 
-const inter = Inter({
-  subsets: ['latin', 'cyrillic'],
-  variable: '--font-inter',
+const manrope = Manrope({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-space-grotesk",
+  weight: ["400", "500", "600", "700"],
+})
+
+const exo2 = Exo_2({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-syne",
+  weight: ["500", "600", "700", "800"],
+})
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-jetbrains-mono",
+  weight: ["400", "500"],
 })
 
 export const metadata: Metadata = {
-  title: 'Изи бриджи -- Команда хакатона',
-  description: 'Мультидисциплинарная команда, которая быстро превращает идеи в работающие продукты. Backend, Frontend, Mobile, UI/UX, Security, DevOps.',
-  generator: 'v0.app',
+  title: "TEAM NERIOR - Инженерия идей в реальность",
+  description:
+    "Хакатон-ориентированная продуктовая команда: AI, backend-архитектура, дизайн-системы и быстрый запуск MVP.",
   icons: {
     icon: [
       {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: light)',
+        url: "/icon-dark-32x32.png",
+        media: "(prefers-color-scheme: light)",
       },
       {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
+        url: "/icon-dark-32x32.png",
+        media: "(prefers-color-scheme: dark)",
       },
     ],
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#000000',
-  width: 'device-width',
+  themeColor: "#000000",
+  width: "device-width",
   initialScale: 1,
 }
 
@@ -38,7 +51,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ru" className={inter.variable}>
+    <html lang="ru" className={`${manrope.variable} ${exo2.variable} ${jetBrainsMono.variable}`}>
       <body className="font-sans antialiased">
         {children}
         <Analytics />

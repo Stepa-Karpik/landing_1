@@ -1,40 +1,35 @@
-"use client"
+﻿"use client"
 
 import { motion, useScroll, useTransform } from "framer-motion"
-import { useRef } from "react"
 
 export function ParallaxGlow() {
-  const ref = useRef(null)
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end end"],
-  })
+  const { scrollY } = useScroll()
 
-  const y1 = useTransform(scrollYProgress, [0, 1], [0, -200])
-  const y2 = useTransform(scrollYProgress, [0, 1], [0, -120])
-  const y3 = useTransform(scrollYProgress, [0, 1], [0, -300])
+  const yFirst = useTransform(scrollY, [0, 2600], [0, -180])
+  const ySecond = useTransform(scrollY, [0, 2600], [0, -120])
+  const yThird = useTransform(scrollY, [0, 2600], [0, -240])
 
   return (
-    <div ref={ref} className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <motion.div
-        style={{ y: y1 }}
-        className="absolute top-[20%] -left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.025]"
+        style={{ y: yFirst }}
+        className="absolute -left-[14%] top-[8%] h-[620px] w-[620px] rounded-full opacity-20"
       >
-        <div className="w-full h-full rounded-full" style={{ background: "radial-gradient(circle, rgba(160,230,200,0.5), transparent 70%)" }} />
+        <div className="h-full w-full rounded-full bg-[radial-gradient(circle,rgba(120,220,255,0.24),rgba(120,220,255,0)_70%)]" />
       </motion.div>
 
       <motion.div
-        style={{ y: y2 }}
-        className="absolute top-[50%] -right-[5%] w-[400px] h-[400px] rounded-full opacity-[0.02]"
+        style={{ y: ySecond }}
+        className="absolute right-[-10%] top-[42%] h-[520px] w-[520px] rounded-full opacity-20"
       >
-        <div className="w-full h-full rounded-full" style={{ background: "radial-gradient(circle, rgba(100,160,220,0.5), transparent 70%)" }} />
+        <div className="h-full w-full rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.13),rgba(255,255,255,0)_72%)]" />
       </motion.div>
 
       <motion.div
-        style={{ y: y3 }}
-        className="absolute top-[80%] left-[30%] w-[600px] h-[600px] rounded-full opacity-[0.02]"
+        style={{ y: yThird }}
+        className="absolute left-[24%] top-[78%] h-[740px] w-[740px] rounded-full opacity-20"
       >
-        <div className="w-full h-full rounded-full" style={{ background: "radial-gradient(circle, rgba(160,230,200,0.4), transparent 70%)" }} />
+        <div className="h-full w-full rounded-full bg-[radial-gradient(circle,rgba(120,220,255,0.18),rgba(120,220,255,0)_72%)]" />
       </motion.div>
     </div>
   )

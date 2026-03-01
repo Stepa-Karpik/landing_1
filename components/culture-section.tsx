@@ -1,29 +1,29 @@
-"use client"
+﻿"use client"
 
-import { cultureValues } from "@/lib/data"
+import { cultureStatement, cultureValues } from "@/lib/data"
 import { SectionReveal } from "./section-reveal"
 
 export function CultureSection() {
   return (
-    <section className="relative py-32 md:py-40">
-      <div className="mx-auto max-w-7xl px-6">
+    <section className="relative py-28 md:py-40">
+      <div className="mx-auto max-w-5xl px-6 text-center">
         <SectionReveal>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-16">
-            Культура
+          <p className="text-xs tracking-[0.2em] text-cyan-100/72 uppercase">Вайб команды</p>
+          <h2 className="mx-auto mt-5 max-w-4xl font-display text-4xl leading-tight tracking-tight text-white md:text-6xl">
+            {cultureStatement}
           </h2>
         </SectionReveal>
 
         <SectionReveal delay={0.15}>
-          <div className="glass rounded-2xl p-8 md:p-12">
-            <div className="flex flex-wrap gap-4">
-              {cultureValues.map((value, i) => (
-                <SectionReveal key={value} delay={0.1 + i * 0.06}>
-                  <div className="px-6 py-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.12] transition-all duration-500">
-                    <span className="text-sm md:text-base text-foreground/80">{value}</span>
-                  </div>
-                </SectionReveal>
-              ))}
-            </div>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            {cultureValues.map((value) => (
+              <span
+                key={value}
+                className="rounded-full border border-white/14 bg-white/[0.05] px-4 py-2 text-[11px] tracking-[0.11em] text-white/72 uppercase"
+              >
+                {value}
+              </span>
+            ))}
           </div>
         </SectionReveal>
       </div>

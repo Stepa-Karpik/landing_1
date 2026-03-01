@@ -1,57 +1,50 @@
-"use client"
+﻿"use client"
 
-import { useRef } from "react"
-import { motion, useInView } from "framer-motion"
+import { motion } from "framer-motion"
 import { timelineEvents } from "@/lib/data"
 import { SectionReveal } from "./section-reveal"
 
 export function TimelineSection() {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-100px" })
-
   return (
-    <section id="experience" className="relative py-32 md:py-40">
+    <section id="timeline" className="relative py-28 md:py-40">
       <div className="mx-auto max-w-7xl px-6">
         <SectionReveal>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-            Опыт
-          </h2>
+          <div className="glass rounded-2xl p-7 max-w-[340px] min-h-[300px]">
+            <p className="text-xs tracking-[0.2em] text-cyan-100/72 uppercase">Хакатонный таймлайн</p>
+            <h2 className="mt-4 font-display text-4xl tracking-tight text-white md:text-5xl">Линия прогресса</h2>
+            <p className="mt-6 text-sm leading-relaxed text-white/68 md:text-base">
+              От финалов до побед и коммерческих запусков. Одна непрерывная линия роста команды.
+            </p>
+          </div>
         </SectionReveal>
 
-        <div ref={ref} className="mt-16 relative">
-          {/* Vertical line */}
-          <div className="absolute left-4 md:left-8 top-0 bottom-0 w-px bg-white/[0.06]">
-            <motion.div
-              className="w-full bg-gradient-to-b from-white/20 via-white/10 to-transparent"
-              initial={{ height: 0 }}
-              animate={isInView ? { height: "100%" } : { height: 0 }}
-              transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-            />
-          </div>
+        <div className="relative mt-16 pl-3 md:pl-4">
+          <div className="absolute bottom-0 left-[11px] top-0 w-px bg-white/10 md:left-[15px]" />
+          <motion.div
+            initial={{ scaleY: 0 }}
+            whileInView={{ scaleY: 1 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute bottom-0 left-[11px] top-0 w-px origin-top bg-gradient-to-b from-cyan-100/80 via-cyan-100/30 to-transparent md:left-[15px]"
+          />
 
-          <div className="flex flex-col gap-12 md:gap-16">
-            {timelineEvents.map((event, i) => (
-              <SectionReveal key={i} delay={0.2 + i * 0.15}>
-                <div className="flex gap-6 md:gap-10">
-                  {/* Dot */}
-                  <div className="relative flex-shrink-0 w-8 md:w-16 flex justify-center">
-                    <motion.div
-                      className="w-3 h-3 rounded-full border border-white/20 bg-background"
-                      initial={{ scale: 0 }}
-                      animate={isInView ? { scale: 1 } : { scale: 0 }}
-                      transition={{ duration: 0.5, delay: 0.3 + i * 0.2, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                      <div className="absolute inset-0.5 rounded-full bg-white/10" />
-                    </motion.div>
+          <div className="space-y-12 md:space-y-14">
+            {timelineEvents.map((event, index) => (
+              <SectionReveal key={`${event.period}-${event.title}`} delay={index * 0.1}>
+                <article className="relative ml-6 min-h-[200px] rounded-2xl border border-white/12 bg-white/[0.04] p-6 backdrop-blur md:ml-10 md:p-7">
+                  <div className="absolute -left-[29px] top-8 h-3 w-3 rounded-full border border-cyan-100/55 bg-black md:-left-[33px]">
+                    <div className="absolute inset-[3px] rounded-full bg-cyan-100/75" />
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1 pb-2">
-                    <span className="text-xs font-mono text-muted-foreground/50 tracking-widest uppercase">{event.year}</span>
-                    <h3 className="mt-1 text-lg md:text-xl font-semibold text-foreground">{event.title}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-xl">{event.description}</p>
+                  <div className="flex flex-wrap items-center gap-3 text-xs tracking-[0.14em] text-white/55 uppercase">
+                    <span>{event.period}</span>
+                    <span className="h-px w-8 bg-white/18" />
+                    <span>{event.result}</span>
                   </div>
-                </div>
+
+                  <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">{event.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-white/68 md:text-base">{event.description}</p>
+                </article>
               </SectionReveal>
             ))}
           </div>
