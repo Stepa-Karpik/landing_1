@@ -325,3 +325,182 @@ export const navItems = [
   { label: "Таймлайн", href: "#timeline" },
   { label: "Контакты", href: "#contacts" },
 ]
+
+export interface RouteBlockOrb {
+  color: string
+  size: number
+  top: string
+  left: string
+}
+
+export interface RouteBlock {
+  slug: string
+  label: string
+  title: string
+  subtitle: string
+  description: string
+  orb: RouteBlockOrb
+}
+
+export interface RouteDetail {
+  title: string
+  subtitle: string
+  description: string
+  highlights: string[]
+}
+
+export const introPhraseLines = [teamName, "ENGINEERING IDEAS INTO REALITY"]
+
+export const routeBlocks: RouteBlock[] = [
+  {
+    slug: "hero",
+    label: "Cover / Hero",
+    title: "Cover",
+    subtitle: heroContent.titleBottom,
+    description: heroContent.subtitle,
+    orb: {
+      color: "rgba(255, 174, 48, 0.86)",
+      size: 860,
+      top: "-44%",
+      left: "56%",
+    },
+  },
+  {
+    slug: "about",
+    label: "About Me",
+    title: "About",
+    subtitle: "Команда, которая превращает требования в готовый продукт",
+    description:
+      "Сильная продуктовая коммуникация, чистая архитектура и скорость реализации без потери качества.",
+    orb: {
+      color: "rgba(255, 120, 58, 0.72)",
+      size: 720,
+      top: "-28%",
+      left: "68%",
+    },
+  },
+  {
+    slug: "services",
+    label: "Skills / Services",
+    title: "Skills",
+    subtitle: "Сервисы и компетенции полного цикла",
+    description: "От AI-проектирования до backend-систем и UX-реализации в одном процессе.",
+    orb: {
+      color: "rgba(255, 195, 77, 0.78)",
+      size: 780,
+      top: "22%",
+      left: "-32%",
+    },
+  },
+  {
+    slug: "craft",
+    label: "Craft",
+    title: "Craft",
+    subtitle: "Дизайн, интерфейсы и продуктовая подача",
+    description: "Собираем выразительные интерфейсы и чистые продуктовые сценарии с акцентом на детали.",
+    orb: {
+      color: "rgba(255, 152, 84, 0.72)",
+      size: 780,
+      top: "-26%",
+      left: "60%",
+    },
+  },
+  {
+    slug: "projects",
+    label: "Projects",
+    title: "Projects",
+    subtitle: "Портфолио запусков и MVP",
+    description: "Кейсы с реальными релизами, метриками и рабочей архитектурой.",
+    orb: {
+      color: "rgba(255, 145, 72, 0.72)",
+      size: 820,
+      top: "-38%",
+      left: "54%",
+    },
+  },
+  {
+    slug: "works",
+    label: "Projects / Works",
+    title: "Projects",
+    subtitle: "Реальные кейсы с быстрым запуском",
+    description:
+      "Показываем не концепты, а рабочие системы: аналитика, mobile, security и продуктовые платформы.",
+    orb: {
+      color: "rgba(255, 145, 72, 0.72)",
+      size: 820,
+      top: "-38%",
+      left: "54%",
+    },
+  },
+  {
+    slug: "contacts",
+    label: "Contacts / Footer",
+    title: "Contacts",
+    subtitle: "Открыты к новым задачам и партнерствам",
+    description: "Напишите нам в Telegram, GitHub или на email. Быстро вернемся с конкретным планом.",
+    orb: {
+      color: "rgba(255, 179, 93, 0.82)",
+      size: 760,
+      top: "8%",
+      left: "60%",
+    },
+  },
+]
+
+export const routeDetails: Record<string, RouteDetail> = {
+  hero: {
+    title: heroContent.titleTop,
+    subtitle: heroContent.titleBottom,
+    description: heroContent.subtitle,
+    highlights: heroSignals,
+  },
+  about: {
+    title: "О команде",
+    subtitle: "Системный подход в каждом проекте",
+    description:
+      "Мы проектируем продуктовые и инженерные решения, где бизнес-цель, UX и backend не конфликтуют друг с другом.",
+    highlights: [
+      "Фокус на delivery: от задачи до релиза без лишних циклов",
+      "Прозрачный процесс: бэклог, приоритеты, демо и метрики",
+      "Архитектура с запасом под масштабирование",
+    ],
+  },
+  services: {
+    title: "Навыки и сервисы",
+    subtitle: "Командная экспертиза без узких мест",
+    description: "Закрываем полный цикл: стратегия продукта, разработка, интеграции, деплой и поддержка.",
+    highlights: systemPillars.map((pillar) => `${pillar.title}: ${pillar.description}`),
+  },
+  craft: {
+    title: "Craft",
+    subtitle: "Внимание к деталям интерфейса и взаимодействий",
+    description:
+      "Проектируем и полируем визуальный слой продукта так, чтобы интерфейс выглядел дорого и работал предсказуемо.",
+    highlights: [
+      "Типографический ритм и иерархия контента",
+      "Сильные акценты без визуального шума",
+      "Согласованность компонентов и паттернов взаимодействия",
+    ],
+  },
+  projects: {
+    title: "Projects",
+    subtitle: "Кейсы и реализованные продукты",
+    description:
+      "Работаем от гипотезы до релиза и фиксируем результат в измеримых метриках продукта и инфраструктуры.",
+    highlights: projects.slice(0, 5).map((project) => `${project.title}: ${project.description}`),
+  },
+  works: {
+    title: "Проекты",
+    subtitle: "Продуктовые кейсы для реальных сценариев",
+    description:
+      "Собираем MVP и production-ready решения в сжатые сроки: от data-flow и API до финального интерфейса.",
+    highlights: projects.slice(0, 5).map((project) => `${project.title}: ${project.description}`),
+  },
+  contacts: {
+    title: "Контакты",
+    subtitle: "Свяжитесь с командой NERIOR",
+    description:
+      "Если нужен запуск AI/MVP или усиление текущей разработки, отправьте задачу и ожидаемый результат.",
+    highlights: contactLinks.map((item) => `${item.label}: ${item.value}`),
+  },
+}
