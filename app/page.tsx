@@ -554,7 +554,7 @@ export default function Page() {
           <WordFrame
             label="Состав"
             word="Состав"
-            href="/about"
+            href="/sostav"
             accent={{
               color: "#ff6100",
               size: "clamp(420px,56vh,760px)",
