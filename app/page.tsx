@@ -71,17 +71,74 @@ function FrameLabel({ children }: { children: string }) {
 }
 
 function MainIntroFrame() {
+  const [isIntroVisible, setIsIntroVisible] = useState(false)
+  const lines = [
+    { text: "Возьми" },
+    { text: "Телефон,", offset: true },
+    { text: "Детка!" },
+    { text: "Мы знаем, что ты", offset: true },
+    { text: "Хочешь позвонить" },
+    { text: "Нам сегодня.", offset: true },
+  ]
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (reducedMotion.matches) {
+      setIsIntroVisible(true)
+      return
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      setIsIntroVisible(true)
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [])
+
   return (
-    <article className="relative h-full w-full overflow-hidden bg-[#f4f4f4]">
-      <div className="absolute right-0 top-0 h-full aspect-square rounded-full bg-[#ffff02]" />
-      <div className="relative flex h-full items-center gap-16 p-16 text-[#141519]">
-        <div className="relative">
-          <p className="text-[clamp(44px,6vw,85px)] leading-[0.98]">Возьми</p>
-          <p className="ml-16 text-[clamp(44px,6vw,85px)] leading-[0.98]">Телефон,</p>
-          <p className="text-[clamp(44px,6vw,85px)] leading-[0.98]">Детка!</p>
-          <p className="ml-16 text-[clamp(44px,6vw,85px)] leading-[0.98]">Мы знаем, что ты</p>
-          <p className="text-[clamp(44px,6vw,85px)] leading-[0.98]">Хочешь позвонить</p>
-          <p className="ml-16 text-[clamp(44px,6vw,85px)] leading-[0.98]">Нам сегодня.</p>
+    <article className="relative h-full w-full overflow-hidden">
+      <div
+        className="relative h-full w-full overflow-hidden bg-[#f4f4f4] transition-[transform,opacity] duration-[920ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+        style={{
+          transform: isIntroVisible ? "scale(1)" : "scale(0.82)",
+          opacity: isIntroVisible ? 1 : 0,
+          transformOrigin: "50% 50%",
+          willChange: "transform, opacity",
+        }}
+      >
+        <div
+          className="absolute right-0 top-0 h-full aspect-square rounded-full bg-[#ffff02] transition-[transform,opacity] duration-[980ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+          style={{
+            transform: isIntroVisible ? "scale(1)" : "scale(0.62)",
+            opacity: isIntroVisible ? 1 : 0,
+            transformOrigin: "100% 0%",
+            transitionDelay: "70ms",
+            willChange: "transform, opacity",
+          }}
+        />
+        <div className="relative flex h-full items-center gap-16 p-16 text-[#141519]">
+          <div className="relative font-brand">
+            {lines.map((line, index) => (
+              <p
+                key={line.text}
+                className={
+                  (line.offset ? "ml-16 " : "") + "overflow-hidden text-[clamp(44px,6vw,85px)] leading-[0.98] font-medium"
+                }
+              >
+                <span
+                  className="block transition-[transform,opacity] duration-[760ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                  style={{
+                    transform: isIntroVisible ? "translateY(0)" : "translateY(32px)",
+                    opacity: isIntroVisible ? 1 : 0,
+                    transitionDelay: (220 + index * 90) + "ms",
+                    willChange: "transform, opacity",
+                  }}
+                >
+                  {line.text}
+                </span>
+              </p>
+            ))}
+          </div>
         </div>
       </div>
     </article>
@@ -182,7 +239,7 @@ function WordFrame({
 function ManifestoFrame() {
   return (
     <article className="h-full w-full bg-[#ffff02] p-[50px] text-black">
-      <p className="text-[clamp(38px,5.25vw,75px)] leading-[1.08]">
+      <p className="font-playfair text-[clamp(38px,5.25vw,75px)] leading-[1.08] font-medium">
         {manifestoLines.map((line) => (
           <span key={line} className="block">
             {line}
@@ -222,12 +279,12 @@ function ContactsFrame() {
   }
 
   return (
-    <article className="relative h-full w-full bg-[#f4f4f4]">
+    <article className="relative h-full w-full bg-[#f4f4f4] font-montserrat">
       <a
         href="https://t.me/Vozmi_telefon_detka_rnd"
         target="_blank"
         rel="noreferrer"
-        className="absolute left-[50px] top-[50px] text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
+        className="absolute left-[50px] top-[50px] text-[clamp(34px,4vw,85px)] leading-none font-normal text-[#191a1e]"
       >
         Telegram
       </a>
@@ -235,7 +292,7 @@ function ContactsFrame() {
         href="https://2023.rauno.me/"
         target="_blank"
         rel="noreferrer"
-        className="absolute right-[50px] top-[50px] text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
+        className="absolute right-[50px] top-[50px] text-[clamp(34px,4vw,85px)] leading-none font-normal text-[#191a1e]"
       >
         pipka
       </a>
@@ -243,7 +300,7 @@ function ContactsFrame() {
         href="https://2022.rauno.me/"
         target="_blank"
         rel="noreferrer"
-        className="absolute left-[50px] bottom-[50px] text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
+        className="absolute left-[50px] bottom-[50px] text-[clamp(34px,4vw,85px)] leading-none font-normal text-[#191a1e]"
       >
         popa
       </a>
@@ -251,7 +308,7 @@ function ContactsFrame() {
         href="https://github.com/Stepa-Karpik"
         target="_blank"
         rel="noreferrer"
-        className="absolute bottom-[50px] right-[50px] text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
+        className="absolute bottom-[50px] right-[50px] text-[clamp(34px,4vw,85px)] leading-none font-normal text-[#191a1e]"
       >
         GitHub
       </a>
@@ -259,7 +316,7 @@ function ContactsFrame() {
         type="button"
         onClick={handleCopyEmail}
         aria-label={copied ? "Скопировано" : "Скопировать email"}
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[clamp(34px,4vw,85px)] leading-none font-normal text-[#191a1e]"
       >
         <span className="grid place-items-center overflow-hidden">
           <span
@@ -288,6 +345,7 @@ export default function Page() {
   const [progress, setProgress] = useState(0)
   const [frameScale, setFrameScale] = useState(1)
   const [frameWidth, setFrameWidth] = useState(0)
+  const [secondFrameReveal, setSecondFrameReveal] = useState(0)
   const [textProgressByFrame, setTextProgressByFrame] = useState<Record<number, number>>({})
 
   useEffect(() => {
@@ -374,6 +432,17 @@ export default function Page() {
       setFrameScale(nextScale)
 
       const spacingCompensation = currentFrameWidth * (1 - nextScale)
+      if (firstFrame && secondFrame) {
+        const firstCenterScroll = firstFrame.offsetLeft + firstFrame.offsetWidth / 2 - scroller.clientWidth / 2
+        const secondCenterScroll =
+          secondFrame.offsetLeft + secondFrame.offsetWidth / 2 - spacingCompensation - scroller.clientWidth / 2
+        const centerSpan = Math.max(secondCenterScroll - firstCenterScroll, 1)
+        const revealStart = firstCenterScroll + centerSpan * 0.12
+        const revealEnd = firstCenterScroll + centerSpan * 0.76
+        const nextReveal = clamp((nextScrollLeft - revealStart) / Math.max(revealEnd - revealStart, 1), 0, 1)
+        setSecondFrameReveal((previous) => (Math.abs(previous - nextReveal) > 0.003 ? nextReveal : previous))
+      }
+
       const lastFrame = frameRefs.current[LAST_FRAME_INDEX]
       const maxCenteredScroll = lastFrame
         ? Math.max(
@@ -475,8 +544,12 @@ export default function Page() {
           ref={(element) => {
             frameRefs.current[1] = element
           }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: getFrameTransform(1) }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center transition-[opacity,transform] duration-200 ease-out"
+          style={{
+            transform: `${getFrameTransform(1)} translateY(${(1 - secondFrameReveal) * 18}px)`,
+            opacity: 0.12 + secondFrameReveal * 0.88,
+            willChange: "transform, opacity",
+          }}
         >
           <WordFrame
             label="Состав"
