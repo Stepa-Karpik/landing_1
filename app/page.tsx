@@ -10,7 +10,13 @@ const TRACKER_WIDTH = 30
 const MIN_FRAME_SCALE = 1 / 1.5
 const LAST_FRAME_INDEX = 8
 const WORD_FRAME_INDEXES = [1, 2, 3, 4, 5, 6]
-const TEXT_SCROLL_SPEED = 1.5
+const TEXT_PROGRESS_POWER = 1.45
+const WHEEL_SCROLL_MULTIPLIER = 0.5
+const WHEEL_MAX_INPUT = 240
+const WHEEL_MAX_VELOCITY = 260
+const WHEEL_FRICTION = 0.72
+const WHEEL_STOP_THRESHOLD = 0.35
+const WHEEL_LINE_HEIGHT = 16
 
 const manifestoLines = [
   "Делать системно.",
@@ -87,7 +93,7 @@ function WordFrame({
   word,
   href,
   accent,
-  textProgress = 0.5,
+  textProgress = 0,
 }: {
   label: string
   word: string
@@ -123,8 +129,7 @@ function WordFrame({
   }, [word])
 
   const safeTextProgress = clamp(textProgress, 0, 1)
-  const boostedProgress = clamp((safeTextProgress - 0.5) * TEXT_SCROLL_SPEED + 0.5, 0, 1)
-  const textShift = maxTextShift * boostedProgress
+  const textShift = maxTextShift * safeTextProgress
 
   const frameBody = (
     <>
@@ -301,11 +306,56 @@ export default function Page() {
     const scroller = scrollerRef.current
     if (!scroller) return
 
+    let wheelVelocity = 0
+    let maxScrollLeft = 0
+    let wheelRafId: number | null = null
+    let lastFrameTimestamp = 0
+    let hasUserWheelInput = false
+
+    const animateWheel = (timestamp: number) => {
+      const deltaTime = lastFrameTimestamp === 0 ? 16.67 : Math.min(timestamp - lastFrameTimestamp, 64)
+      lastFrameTimestamp = timestamp
+      const frameRatio = deltaTime / 16.67
+
+      const nextScrollLeft = clamp(scroller.scrollLeft + wheelVelocity * frameRatio, 0, maxScrollLeft)
+      scroller.scrollLeft = nextScrollLeft
+
+      const friction = Math.pow(WHEEL_FRICTION, frameRatio)
+      wheelVelocity *= friction
+
+      if (Math.abs(wheelVelocity) < WHEEL_STOP_THRESHOLD) {
+        wheelVelocity = 0
+        wheelRafId = null
+        return
+      }
+
+      wheelRafId = window.requestAnimationFrame(animateWheel)
+    }
+
+    const startWheelAnimation = () => {
+      if (wheelRafId !== null) return
+      lastFrameTimestamp = 0
+      wheelRafId = window.requestAnimationFrame(animateWheel)
+    }
+
     const onWheel = (event: WheelEvent) => {
-      const dominantDelta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX
+      let dominantDelta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX
+      if (event.deltaMode === 1) {
+        dominantDelta *= WHEEL_LINE_HEIGHT
+      } else if (event.deltaMode === 2) {
+        dominantDelta *= scroller.clientWidth
+      }
       if (dominantDelta === 0) return
       event.preventDefault()
-      scroller.scrollLeft += dominantDelta * 4.2
+
+      const limitedInput = clamp(dominantDelta, -WHEEL_MAX_INPUT, WHEEL_MAX_INPUT)
+      wheelVelocity = clamp(
+        wheelVelocity + limitedInput * WHEEL_SCROLL_MULTIPLIER,
+        -WHEEL_MAX_VELOCITY,
+        WHEEL_MAX_VELOCITY,
+      )
+      hasUserWheelInput = true
+      startWheelAnimation()
     }
 
     const onScroll = () => {
@@ -331,31 +381,48 @@ export default function Page() {
             0,
           )
         : Math.max(scroller.scrollWidth - scroller.clientWidth, 0)
+      maxScrollLeft = maxCenteredScroll
+
       const clampedScrollLeft = Math.min(nextScrollLeft, maxCenteredScroll)
       if (Math.abs(clampedScrollLeft - scroller.scrollLeft) > 0.5) {
         scroller.scrollLeft = clampedScrollLeft
       }
       nextScrollLeft = clampedScrollLeft
 
+      const atStart = nextScrollLeft <= 0.5
+      const atEnd = nextScrollLeft >= maxScrollLeft - 0.5
+      if ((atStart && wheelVelocity < 0) || (atEnd && wheelVelocity > 0)) {
+        wheelVelocity = 0
+      }
+
+      if (!hasUserWheelInput && wheelRafId === null) {
+        wheelVelocity = 0
+      }
+      hasUserWheelInput = false
+
       setProgress(nextScrollLeft / Math.max(maxCenteredScroll, 1))
 
       const nextTextProgress: Record<number, number> = {}
       for (const index of WORD_FRAME_INDEXES) {
-        const frame = frameRefs.current[index]
-        if (!frame) continue
-        const visualCenter =
-          frame.offsetLeft - index * spacingCompensation + frame.offsetWidth / 2 - nextScrollLeft
-        const travelRange = scroller.clientWidth / 2 + frame.offsetWidth / 2
-        const relative = visualCenter - scroller.clientWidth / 2
-        const progressValue = clamp((travelRange - relative) / (2 * travelRange), 0, 1)
+        const currentFrame = frameRefs.current[index]
+        const nextFrame = frameRefs.current[index + 1]
+        if (!currentFrame || !nextFrame) continue
+
+        const currentCenterScroll =
+          currentFrame.offsetLeft + currentFrame.offsetWidth / 2 - index * spacingCompensation - scroller.clientWidth / 2
+        const nextCenterScroll =
+          nextFrame.offsetLeft + nextFrame.offsetWidth / 2 - (index + 1) * spacingCompensation - scroller.clientWidth / 2
+        const centerSpan = Math.max(nextCenterScroll - currentCenterScroll, 1)
+        const linearProgress = clamp((nextScrollLeft - currentCenterScroll) / centerSpan, 0, 1)
+        const progressValue = 1 - Math.pow(1 - linearProgress, TEXT_PROGRESS_POWER)
         nextTextProgress[index] = progressValue
       }
       setTextProgressByFrame((previous) => {
         let changed = false
         const updated = { ...previous }
         for (const index of WORD_FRAME_INDEXES) {
-          const nextValue = nextTextProgress[index] ?? 0.5
-          const prevValue = previous[index] ?? 0.5
+          const nextValue = nextTextProgress[index] ?? 0
+          const prevValue = previous[index] ?? 0
           if (Math.abs(nextValue - prevValue) > 0.002) {
             updated[index] = nextValue
             changed = true
@@ -374,6 +441,9 @@ export default function Page() {
       scroller.removeEventListener("wheel", onWheel)
       scroller.removeEventListener("scroll", onScroll)
       window.removeEventListener("resize", onScroll)
+      if (wheelRafId !== null) {
+        window.cancelAnimationFrame(wheelRafId)
+      }
     }
   }, [])
 
@@ -388,7 +458,7 @@ export default function Page() {
 
       <div
         ref={scrollerRef}
-        className="flex h-full w-full touch-pan-x items-center gap-10 overflow-x-auto overflow-y-hidden scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex h-full w-full touch-pan-x items-center gap-10 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ paddingInline: railPadding }}
       >
         <div
@@ -419,7 +489,7 @@ export default function Page() {
               top: "50%",
               transform: "translateY(-50%)",
             }}
-            textProgress={textProgressByFrame[1] ?? 0.5}
+            textProgress={textProgressByFrame[1] ?? 0}
           />
         </div>
 
@@ -430,7 +500,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(2) }}
         >
-          <WordFrame label="Люди" word="Люди" href="/hero" textProgress={textProgressByFrame[2] ?? 0.5} />
+          <WordFrame label="Люди" word="Люди" href="/hero" textProgress={textProgressByFrame[2] ?? 0} />
         </div>
 
         <div
@@ -450,7 +520,7 @@ export default function Page() {
               left: "-16%",
               top: "-16%",
             }}
-            textProgress={textProgressByFrame[3] ?? 0.5}
+            textProgress={textProgressByFrame[3] ?? 0}
           />
         </div>
 
@@ -461,7 +531,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(4) }}
         >
-          <WordFrame label="Подход" word="Подход" href="/craft" textProgress={textProgressByFrame[4] ?? 0.5} />
+          <WordFrame label="Подход" word="Подход" href="/craft" textProgress={textProgressByFrame[4] ?? 0} />
         </div>
 
         <div
@@ -481,7 +551,7 @@ export default function Page() {
               right: "-20%",
               bottom: "-22%",
             }}
-            textProgress={textProgressByFrame[5] ?? 0.5}
+            textProgress={textProgressByFrame[5] ?? 0}
           />
         </div>
 
@@ -492,7 +562,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(6) }}
         >
-          <WordFrame label="Вектор" word="Вектор" href="/works" textProgress={textProgressByFrame[6] ?? 0.5} />
+          <WordFrame label="Вектор" word="Вектор" href="/works" textProgress={textProgressByFrame[6] ?? 0} />
         </div>
 
         <div
