@@ -1,6 +1,7 @@
 ﻿import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { Exo_2, JetBrains_Mono, Manrope, Montserrat, Playfair_Display, Playfair_Display_SC } from "next/font/google"
+import { CustomCursor } from "@/components/custom-cursor"
 import "./globals.css"
 
 const manrope = Manrope({
@@ -74,6 +75,7 @@ export default function RootLayout({
       className={`${manrope.variable} ${exo2.variable} ${jetBrainsMono.variable} ${playfairDisplaySc.variable} ${playfairDisplay.variable} ${montserrat.variable}`}
     >
       <body className="font-sans antialiased">
+        <CustomCursor />
         {children}
         <Analytics />
       </body>

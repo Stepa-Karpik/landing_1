@@ -265,3 +265,11 @@ body::before {
 .animate-marquee {
   animation: marquee 36s linear infinite;
 }
+
+@media (hover: hover) and (pointer: fine) {
+  html,
+  body,
+  body * {
+    cursor: none !important;
+  }
+}
