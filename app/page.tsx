@@ -8,16 +8,23 @@ const LINE_WIDTH = 1
 const LINE_GAP = 9
 const TRACKER_WIDTH = 30
 const MIN_FRAME_SCALE = 1 / 1.5
+const LAST_FRAME_INDEX = 8
+const WORD_FRAME_INDEXES = [1, 2, 3, 4, 5, 6]
+const TEXT_SCROLL_SPEED = 1.5
 
 const manifestoLines = [
-  "Make it fast.",
-  "Make it beautiful.",
-  "Make it consistent.",
-  "Make it carefully.",
-  "Make it timeless.",
-  "Make it soulful.",
-  "Make it.",
+  "Делать системно.",
+  "Делать спокойно.",
+  "Делать осознанно.",
+  "Делать масштабируемо.",
+  "Делать надолго.",
+  "Делать чисто.",
+  "Делать.",
 ]
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value))
+}
 
 function Minimap({ progress }: { progress: number }) {
   const linesWidth = LINES_COUNT * LINE_WIDTH + (LINES_COUNT - 1) * LINE_GAP
@@ -63,12 +70,12 @@ function MainIntroFrame() {
       <div className="absolute right-0 top-0 h-full aspect-square rounded-full bg-[#ffff02]" />
       <div className="relative flex h-full items-center gap-16 p-16 text-[#141519]">
         <div className="relative">
-          <p className="text-[clamp(44px,6vw,85px)] leading-[0.98]">Rauno Freiberg</p>
-          <p className="ml-16 text-[clamp(44px,6vw,85px)] leading-[0.98]">is an Estonian</p>
-          <p className="text-[clamp(44px,6vw,85px)] leading-[0.98]">interaction</p>
-          <p className="ml-16 text-[clamp(44px,6vw,85px)] leading-[0.98]">designer</p>
-          <p className="text-[clamp(44px,6vw,85px)] leading-[0.98]">working with Vercel</p>
-          <p className="ml-16 text-[clamp(44px,6vw,85px)] leading-[0.98]">and Devouring Details</p>
+          <p className="text-[clamp(44px,6vw,85px)] leading-[0.98]">Возьми</p>
+          <p className="ml-16 text-[clamp(44px,6vw,85px)] leading-[0.98]">Телефон,</p>
+          <p className="text-[clamp(44px,6vw,85px)] leading-[0.98]">Детка!</p>
+          <p className="ml-16 text-[clamp(44px,6vw,85px)] leading-[0.98]">Мы знаем, что ты</p>
+          <p className="text-[clamp(44px,6vw,85px)] leading-[0.98]">Хочешь позвонить</p>
+          <p className="ml-16 text-[clamp(44px,6vw,85px)] leading-[0.98]">Нам сегодня.</p>
         </div>
       </div>
     </article>
@@ -79,29 +86,74 @@ function WordFrame({
   label,
   word,
   href,
-  withOrangeCircle = false,
+  accent,
+  textProgress = 0.5,
 }: {
   label: string
   word: string
   href: string
-  withOrangeCircle?: boolean
+  accent?: {
+    color: string
+    size: string
+    top?: string
+    right?: string
+    bottom?: string
+    left?: string
+    transform?: string
+  }
+  textProgress?: number
 }) {
   const external = href.startsWith("http")
+  const textViewportRef = useRef<HTMLDivElement | null>(null)
+  const textRef = useRef<HTMLHeadingElement | null>(null)
+  const [maxTextShift, setMaxTextShift] = useState(0)
+
+  useEffect(() => {
+    const measure = () => {
+      const viewport = textViewportRef.current
+      const textNode = textRef.current
+      if (!viewport || !textNode) return
+      const nextShift = Math.max(textNode.scrollWidth - viewport.clientWidth, 0)
+      setMaxTextShift((previous) => (Math.abs(previous - nextShift) > 0.5 ? nextShift : previous))
+    }
+
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [word])
+
+  const safeTextProgress = clamp(textProgress, 0, 1)
+  const boostedProgress = clamp((safeTextProgress - 0.5) * TEXT_SCROLL_SPEED + 0.5, 0, 1)
+  const textShift = maxTextShift * boostedProgress
 
   const frameBody = (
     <>
       <FrameLabel>{label}</FrameLabel>
       <article className="relative h-full w-full overflow-hidden bg-[#f4f4f4] transition-transform duration-150 group-hover:scale-[1.004]">
-        <div className="flex h-full items-center">
+        <div ref={textViewportRef} className="relative z-10 flex h-full items-center overflow-hidden px-5">
           <h2
+            ref={textRef}
             aria-hidden
-            className="w-full select-none text-[clamp(240px,36vw,720px)] leading-[0.88] tracking-[-0.05em] text-black"
+            className="inline-block whitespace-nowrap select-none px-2 text-[clamp(240px,36vw,720px)] leading-[0.88] tracking-[-0.05em] text-black"
+            style={{ transform: `translateX(${-textShift}px)` }}
           >
             {word}
           </h2>
         </div>
-        {withOrangeCircle && (
-          <div className="pointer-events-none absolute right-[-32%] top-0 h-full aspect-square rounded-full bg-[#ff6100]" />
+        {accent && (
+          <div
+            className="pointer-events-none absolute z-0 rounded-full"
+            style={{
+              background: accent.color,
+              width: accent.size,
+              height: accent.size,
+              top: accent.top,
+              right: accent.right,
+              bottom: accent.bottom,
+              left: accent.left,
+              transform: accent.transform,
+            }}
+          />
         )}
       </article>
     </>
@@ -140,12 +192,12 @@ function ContactsFrame() {
   return (
     <article className="relative h-full w-full bg-[#f4f4f4]">
       <a
-        href="https://twitter.com/raunofreiberg"
+        href="https://t.me/Vozmi_telefon_detka_rnd"
         target="_blank"
         rel="noreferrer"
         className="absolute left-[50px] top-[50px] text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
       >
-        Twitter
+        Telegram
       </a>
       <a
         href="https://2023.rauno.me/"
@@ -153,7 +205,7 @@ function ContactsFrame() {
         rel="noreferrer"
         className="absolute right-[50px] top-[50px] text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
       >
-        2023
+        pipka
       </a>
       <a
         href="https://2022.rauno.me/"
@@ -161,10 +213,10 @@ function ContactsFrame() {
         rel="noreferrer"
         className="absolute left-[50px] bottom-[50px] text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
       >
-        2022
+        popa
       </a>
       <a
-        href="https://github.com/raunofreiberg"
+        href="https://github.com/Stepa-Karpik"
         target="_blank"
         rel="noreferrer"
         className="absolute bottom-[50px] right-[50px] text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
@@ -172,7 +224,7 @@ function ContactsFrame() {
         GitHub
       </a>
       <a
-        href="mailto:hello@rauno.me"
+        href="i@karpovstepan.ru"
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
       >
         Email
@@ -187,6 +239,7 @@ export default function Page() {
   const [progress, setProgress] = useState(0)
   const [frameScale, setFrameScale] = useState(1)
   const [frameWidth, setFrameWidth] = useState(0)
+  const [textProgressByFrame, setTextProgressByFrame] = useState<Record<number, number>>({})
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflowY
@@ -208,12 +261,11 @@ export default function Page() {
       const dominantDelta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX
       if (dominantDelta === 0) return
       event.preventDefault()
-      scroller.scrollLeft += dominantDelta * 2.8
+      scroller.scrollLeft += dominantDelta * 4.2
     }
 
     const onScroll = () => {
-      const max = Math.max(scroller.scrollWidth - scroller.clientWidth, 1)
-      setProgress(scroller.scrollLeft / max)
+      let nextScrollLeft = scroller.scrollLeft
 
       const firstFrame = frameRefs.current[0]
       const secondFrame = frameRefs.current[1]
@@ -226,6 +278,47 @@ export default function Page() {
       const scalePhase = Math.min(scroller.scrollLeft / firstToSecondDistance, 1)
       const nextScale = 1 - (1 - MIN_FRAME_SCALE) * scalePhase
       setFrameScale(nextScale)
+
+      const spacingCompensation = currentFrameWidth * (1 - nextScale)
+      const lastFrame = frameRefs.current[LAST_FRAME_INDEX]
+      const maxCenteredScroll = lastFrame
+        ? Math.max(
+            lastFrame.offsetLeft + lastFrame.offsetWidth / 2 - LAST_FRAME_INDEX * spacingCompensation - scroller.clientWidth / 2,
+            0,
+          )
+        : Math.max(scroller.scrollWidth - scroller.clientWidth, 0)
+      const clampedScrollLeft = Math.min(nextScrollLeft, maxCenteredScroll)
+      if (Math.abs(clampedScrollLeft - scroller.scrollLeft) > 0.5) {
+        scroller.scrollLeft = clampedScrollLeft
+      }
+      nextScrollLeft = clampedScrollLeft
+
+      setProgress(nextScrollLeft / Math.max(maxCenteredScroll, 1))
+
+      const nextTextProgress: Record<number, number> = {}
+      for (const index of WORD_FRAME_INDEXES) {
+        const frame = frameRefs.current[index]
+        if (!frame) continue
+        const visualCenter =
+          frame.offsetLeft - index * spacingCompensation + frame.offsetWidth / 2 - nextScrollLeft
+        const travelRange = scroller.clientWidth / 2 + frame.offsetWidth / 2
+        const relative = visualCenter - scroller.clientWidth / 2
+        const progressValue = clamp((travelRange - relative) / (2 * travelRange), 0, 1)
+        nextTextProgress[index] = progressValue
+      }
+      setTextProgressByFrame((previous) => {
+        let changed = false
+        const updated = { ...previous }
+        for (const index of WORD_FRAME_INDEXES) {
+          const nextValue = nextTextProgress[index] ?? 0.5
+          const prevValue = previous[index] ?? 0.5
+          if (Math.abs(nextValue - prevValue) > 0.002) {
+            updated[index] = nextValue
+            changed = true
+          }
+        }
+        return changed ? updated : previous
+      })
     }
 
     onScroll()
@@ -271,7 +364,19 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(1) }}
         >
-          <WordFrame label="Состав" word="Состав" href="/about" withOrangeCircle />
+          <WordFrame
+            label="Состав"
+            word="Состав"
+            href="/about"
+            accent={{
+              color: "#ff6100",
+              size: "clamp(420px,56vh,760px)",
+              right: "-28%",
+              top: "50%",
+              transform: "translateY(-50%)",
+            }}
+            textProgress={textProgressByFrame[1] ?? 0.5}
+          />
         </div>
 
         <div
@@ -281,7 +386,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(2) }}
         >
-          <WordFrame label="Люди" word="Люди" href="/hero" />
+          <WordFrame label="Люди" word="Люди" href="/hero" textProgress={textProgressByFrame[2] ?? 0.5} />
         </div>
 
         <div
@@ -291,7 +396,18 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(3) }}
         >
-          <WordFrame label="Стэк" word="Стэк" href="/services" />
+          <WordFrame
+            label="Стэк"
+            word="Стэк"
+            href="/services"
+            accent={{
+              color: "#37c978",
+              size: "clamp(340px,48vh,620px)",
+              left: "-16%",
+              top: "-16%",
+            }}
+            textProgress={textProgressByFrame[3] ?? 0.5}
+          />
         </div>
 
         <div
@@ -301,7 +417,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(4) }}
         >
-          <WordFrame label="Подход" word="Подход" href="/craft" />
+          <WordFrame label="Подход" word="Подход" href="/craft" textProgress={textProgressByFrame[4] ?? 0.5} />
         </div>
 
         <div
@@ -311,7 +427,18 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(5) }}
         >
-          <WordFrame label="Результат" word="Результат" href="/projects" />
+          <WordFrame
+            label="Результат"
+            word="Результат"
+            href="/projects"
+            accent={{
+              color: "#4f7cff",
+              size: "clamp(360px,52vh,680px)",
+              right: "-20%",
+              bottom: "-22%",
+            }}
+            textProgress={textProgressByFrame[5] ?? 0.5}
+          />
         </div>
 
         <div
@@ -321,7 +448,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(6) }}
         >
-          <WordFrame label="Вектор" word="Вектор" href="/works" />
+          <WordFrame label="Вектор" word="Вектор" href="/works" textProgress={textProgressByFrame[6] ?? 0.5} />
         </div>
 
         <div
