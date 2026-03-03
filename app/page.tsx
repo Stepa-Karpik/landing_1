@@ -271,7 +271,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(1) }}
         >
-          <WordFrame label="Devouring Details" word="DD" href="https://www.devouringdetails.com/" withOrangeCircle />
+          <WordFrame label="Состав" word="Состав" href="/about" withOrangeCircle />
         </div>
 
         <div
@@ -281,7 +281,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(2) }}
         >
-          <WordFrame label="Craft" word="Craft" href="/craft" />
+          <WordFrame label="Люди" word="Люди" href="/hero" />
         </div>
 
         <div
@@ -291,7 +291,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(3) }}
         >
-          <WordFrame label="Projects" word="Projects" href="/projects" />
+          <WordFrame label="Стэк" word="Стэк" href="/services" />
         </div>
 
         <div
@@ -301,7 +301,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(4) }}
         >
-          <ManifestoFrame />
+          <WordFrame label="Подход" word="Подход" href="/craft" />
         </div>
 
         <div
@@ -310,6 +310,36 @@ export default function Page() {
           }}
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(5) }}
+        >
+          <WordFrame label="Результат" word="Результат" href="/projects" />
+        </div>
+
+        <div
+          ref={(element) => {
+            frameRefs.current[6] = element
+          }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+          style={{ transform: getFrameTransform(6) }}
+        >
+          <WordFrame label="Вектор" word="Вектор" href="/works" />
+        </div>
+
+        <div
+          ref={(element) => {
+            frameRefs.current[7] = element
+          }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+          style={{ transform: getFrameTransform(7) }}
+        >
+          <ManifestoFrame />
+        </div>
+
+        <div
+          ref={(element) => {
+            frameRefs.current[8] = element
+          }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+          style={{ transform: getFrameTransform(8) }}
         >
           <ContactsFrame />
         </div>
