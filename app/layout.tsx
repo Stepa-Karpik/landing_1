@@ -1,6 +1,6 @@
 ﻿import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
-import { Exo_2, JetBrains_Mono, Manrope } from "next/font/google"
+import { Exo_2, JetBrains_Mono, Manrope, Playfair_Display_SC } from "next/font/google"
 import "./globals.css"
 
 const manrope = Manrope({
@@ -19,6 +19,12 @@ const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin", "cyrillic"],
   variable: "--font-jetbrains-mono",
   weight: ["400", "500"],
+})
+
+const playfairDisplaySc = Playfair_Display_SC({
+  subsets: ["latin"],
+  variable: "--font-playfair-sc",
+  weight: ["400", "700", "900"],
 })
 
 export const metadata: Metadata = {
@@ -51,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ru" className={`${manrope.variable} ${exo2.variable} ${jetBrainsMono.variable}`}>
+    <html lang="ru" className={`${manrope.variable} ${exo2.variable} ${jetBrainsMono.variable} ${playfairDisplaySc.variable}`}>
       <body className="font-sans antialiased">
         {children}
         <Analytics />

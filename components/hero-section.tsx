@@ -25,7 +25,7 @@ export function HeroSection() {
         </motion.div>
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center text-center">
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center text-center md:items-end md:text-right">
         <motion.span
           className="rounded-full border border-white/18 bg-white/[0.06] px-4 py-2 text-[10px] tracking-[0.2em] text-white/75 uppercase"
           initial={{ opacity: 0, y: 24, filter: "blur(8px)" }}
@@ -36,7 +36,7 @@ export function HeroSection() {
         </motion.span>
 
         <motion.h1
-          className="mt-7 font-display text-5xl leading-[1.02] tracking-tight text-white md:text-7xl lg:text-8xl"
+          className="hidden"
           initial={{ opacity: 0, y: 34, filter: "blur(14px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{ duration: 1.25, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
