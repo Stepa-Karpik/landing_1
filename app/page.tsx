@@ -189,6 +189,33 @@ function ManifestoFrame() {
 }
 
 function ContactsFrame() {
+  const emailToCopy = "i@karpovstepan.ru"
+  const [copied, setCopied] = useState(false)
+  const resetTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current)
+      }
+    }
+  }, [])
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(emailToCopy)
+      setCopied(true)
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current)
+      }
+      resetTimerRef.current = window.setTimeout(() => {
+        setCopied(false)
+      }, 1000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
   return (
     <article className="relative h-full w-full bg-[#f4f4f4]">
       <a
@@ -223,12 +250,29 @@ function ContactsFrame() {
       >
         GitHub
       </a>
-      <a
-        href="i@karpovstepan.ru"
+      <button
+        type="button"
+        onClick={handleCopyEmail}
+        aria-label={copied ? "Скопировано" : "Скопировать email"}
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[clamp(34px,4vw,85px)] leading-none text-[#191a1e]"
       >
-        Email
-      </a>
+        <span className="grid place-items-center overflow-hidden">
+          <span
+            className={`col-start-1 row-start-1 transition-all duration-300 ${
+              copied ? "-translate-y-[120%] opacity-0" : "translate-y-0 opacity-100"
+            }`}
+          >
+            Email
+          </span>
+          <span
+            className={`col-start-1 row-start-1 transition-all duration-300 ${
+              copied ? "translate-y-0 opacity-100" : "translate-y-[120%] opacity-0"
+            }`}
+          >
+            Скопировано
+          </span>
+        </span>
+      </button>
     </article>
   )
 }
