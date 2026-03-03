@@ -7,6 +7,7 @@ const LINES_COUNT = 20
 const LINE_WIDTH = 1
 const LINE_GAP = 9
 const TRACKER_WIDTH = 30
+const MIN_FRAME_SCALE = 1 / 1.5
 
 const manifestoLines = [
   "Make it fast.",
@@ -182,7 +183,9 @@ function ContactsFrame() {
 
 export default function Page() {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const frameRefs = useRef<Array<HTMLDivElement | null>>([])
   const [progress, setProgress] = useState(0)
+  const [frameScale, setFrameScale] = useState(1)
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflowY
@@ -210,15 +213,27 @@ export default function Page() {
     const onScroll = () => {
       const max = Math.max(scroller.scrollWidth - scroller.clientWidth, 1)
       setProgress(scroller.scrollLeft / max)
+
+      const firstFrame = frameRefs.current[0]
+      const secondFrame = frameRefs.current[1]
+      const firstToSecondDistance =
+        firstFrame && secondFrame
+          ? Math.max(secondFrame.offsetLeft - firstFrame.offsetLeft, 1)
+          : Math.max(scroller.clientWidth * 0.8, 1)
+      const scalePhase = Math.min(scroller.scrollLeft / firstToSecondDistance, 1)
+      const nextScale = 1 - (1 - MIN_FRAME_SCALE) * scalePhase
+      setFrameScale(nextScale)
     }
 
     onScroll()
     scroller.addEventListener("wheel", onWheel, { passive: false })
     scroller.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll)
 
     return () => {
       scroller.removeEventListener("wheel", onWheel)
       scroller.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
     }
   }, [])
 
@@ -234,27 +249,63 @@ export default function Page() {
         className="flex h-full w-full touch-pan-x items-center gap-10 overflow-x-auto overflow-y-hidden scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ paddingInline: railPadding }}
       >
-        <div className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0">
+        <div
+          ref={(element) => {
+            frameRefs.current[0] = element
+          }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+          style={{ transform: `scale(${frameScale})` }}
+        >
           <MainIntroFrame />
         </div>
 
-        <div className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0">
+        <div
+          ref={(element) => {
+            frameRefs.current[1] = element
+          }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+          style={{ transform: `scale(${frameScale})` }}
+        >
           <WordFrame label="Devouring Details" word="DD" href="https://www.devouringdetails.com/" withOrangeCircle />
         </div>
 
-        <div className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0">
+        <div
+          ref={(element) => {
+            frameRefs.current[2] = element
+          }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+          style={{ transform: `scale(${frameScale})` }}
+        >
           <WordFrame label="Craft" word="Craft" href="/craft" />
         </div>
 
-        <div className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0">
+        <div
+          ref={(element) => {
+            frameRefs.current[3] = element
+          }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+          style={{ transform: `scale(${frameScale})` }}
+        >
           <WordFrame label="Projects" word="Projects" href="/projects" />
         </div>
 
-        <div className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0">
+        <div
+          ref={(element) => {
+            frameRefs.current[4] = element
+          }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+          style={{ transform: `scale(${frameScale})` }}
+        >
           <ManifestoFrame />
         </div>
 
-        <div className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0">
+        <div
+          ref={(element) => {
+            frameRefs.current[5] = element
+          }}
+          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+          style={{ transform: `scale(${frameScale})` }}
+        >
           <ContactsFrame />
         </div>
       </div>
