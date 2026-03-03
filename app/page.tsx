@@ -31,7 +31,7 @@ function Minimap({ progress }: { progress: number }) {
         ))}
         <div
           aria-hidden
-          className="absolute top-0 h-[18px] w-[30px] border border-[#969696] bg-transparent"
+          className="absolute top-0 h-[18px] w-[30px] border border-[#969696] bg-[#b8b8b8]"
           style={{ transform: `translateX(${trackerX}px)` }}
         />
       </div>
@@ -186,6 +186,7 @@ export default function Page() {
   const frameRefs = useRef<Array<HTMLDivElement | null>>([])
   const [progress, setProgress] = useState(0)
   const [frameScale, setFrameScale] = useState(1)
+  const [frameWidth, setFrameWidth] = useState(0)
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflowY
@@ -216,6 +217,8 @@ export default function Page() {
 
       const firstFrame = frameRefs.current[0]
       const secondFrame = frameRefs.current[1]
+      const currentFrameWidth = firstFrame?.offsetWidth ?? 0
+      setFrameWidth((previous) => (Math.abs(previous - currentFrameWidth) > 0.5 ? currentFrameWidth : previous))
       const firstToSecondDistance =
         firstFrame && secondFrame
           ? Math.max(secondFrame.offsetLeft - firstFrame.offsetLeft, 1)
@@ -238,6 +241,8 @@ export default function Page() {
   }, [])
 
   const railPadding = useMemo(() => "max(30px, calc((100vw - clamp(920px, 78vw, 1200px)) / 2))", [])
+  const spacingCompensation = frameWidth * (1 - frameScale)
+  const getFrameTransform = (index: number) => `translateX(${-index * spacingCompensation}px) scale(${frameScale})`
 
   return (
     <main className="relative h-screen overflow-hidden bg-[#ededed]">
@@ -254,7 +259,7 @@ export default function Page() {
             frameRefs.current[0] = element
           }}
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: `scale(${frameScale})` }}
+          style={{ transform: getFrameTransform(0) }}
         >
           <MainIntroFrame />
         </div>
@@ -264,7 +269,7 @@ export default function Page() {
             frameRefs.current[1] = element
           }}
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: `scale(${frameScale})` }}
+          style={{ transform: getFrameTransform(1) }}
         >
           <WordFrame label="Devouring Details" word="DD" href="https://www.devouringdetails.com/" withOrangeCircle />
         </div>
@@ -274,7 +279,7 @@ export default function Page() {
             frameRefs.current[2] = element
           }}
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: `scale(${frameScale})` }}
+          style={{ transform: getFrameTransform(2) }}
         >
           <WordFrame label="Craft" word="Craft" href="/craft" />
         </div>
@@ -284,7 +289,7 @@ export default function Page() {
             frameRefs.current[3] = element
           }}
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: `scale(${frameScale})` }}
+          style={{ transform: getFrameTransform(3) }}
         >
           <WordFrame label="Projects" word="Projects" href="/projects" />
         </div>
@@ -294,7 +299,7 @@ export default function Page() {
             frameRefs.current[4] = element
           }}
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: `scale(${frameScale})` }}
+          style={{ transform: getFrameTransform(4) }}
         >
           <ManifestoFrame />
         </div>
@@ -304,7 +309,7 @@ export default function Page() {
             frameRefs.current[5] = element
           }}
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: `scale(${frameScale})` }}
+          style={{ transform: getFrameTransform(5) }}
         >
           <ContactsFrame />
         </div>
