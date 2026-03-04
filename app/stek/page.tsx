@@ -4,7 +4,6 @@ import { motion, useInView } from "framer-motion"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 
 const REVEAL_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
-const HOVER_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
 interface RoleRow {
   id: string
@@ -13,16 +12,13 @@ interface RoleRow {
   competencies: string[]
 }
 
-interface StackBlock {
+interface StackDirection {
   id: string
   index: string
   title: string
   summary: string
-  description: string
-  stack: string[]
-  responsibilities: string[]
-  delivery: string[]
   databaseScope: string
+  stack: string[]
 }
 
 const roleRows: RoleRow[] = [
@@ -30,23 +26,13 @@ const roleRows: RoleRow[] = [
     id: "web-frontend",
     index: "01",
     title: "Web Frontend",
-    competencies: ["React", "TypeScript", "Next.js", "HTML5", "CSS3", "SASS", "Figma", "Motion", "PostgreSQL"],
+    competencies: ["React", "TypeScript", "Next.js", "Motion", "UI/UX", "PostgreSQL", "Delivery"],
   },
   {
     id: "web-backend",
     index: "02",
     title: "Web Backend",
-    competencies: [
-      "Node.js",
-      "Express",
-      "Python",
-      "FastAPI",
-      "Flask",
-      "GraphQL",
-      "REST API",
-      "Security",
-      "PostgreSQL",
-    ],
+    competencies: ["Node.js", "Express", "Python", "FastAPI", "Flask", "GraphQL", "REST API", "Security", "PostgreSQL"],
   },
   {
     id: "mobile-ios",
@@ -64,165 +50,265 @@ const roleRows: RoleRow[] = [
     id: "design",
     index: "05",
     title: "Design",
-    competencies: ["Figma", "PowerPoint", "Photoshop", "Illustrator", "Nano Banana", "Motion", "UI/UX", "Pitch"],
+    competencies: ["Figma", "PowerPoint", "Photoshop", "Illustrator", "Nano Banana", "Motion", "UI/UX", "Pitch", "Delivery"],
   },
 ]
 
 const competencyTags = [
   "React",
-  "TypeScript",
-  "Next.js",
-  "HTML5",
-  "CSS3",
-  "SASS",
-  "Node.js",
-  "Express",
   "Python",
-  "FastAPI",
-  "Flask",
-  "GraphQL",
-  "REST API",
-  "Swift",
-  "SwiftUI",
-  "Objective-C",
-  "Kotlin",
-  "Jetpack Compose",
   "Figma",
+  "Swift",
+  "Kotlin",
+  "TypeScript",
+  "FastAPI",
   "PowerPoint",
+  "SwiftUI",
+  "Jetpack Compose",
+  "Next.js",
+  "Express",
   "Photoshop",
-  "Illustrator",
+  "Objective-C",
+  "GraphQL",
   "Nano Banana",
+  "Coroutines",
+  "HTML5",
+  "Flask",
+  "Illustrator",
+  "Retrofit",
+  "Node.js",
   "Motion",
+  "REST API",
+  "CSS3",
   "PostgreSQL",
+  "SASS",
   "UI/UX",
   "Security",
   "Delivery",
   "Pitch",
 ]
 
-const stackBlocks: StackBlock[] = [
+const stackDirections: StackDirection[] = [
   {
     id: "web-frontend",
     index: "01",
     title: "Web Frontend",
-    summary: "Фронтенд на React с SSR/ISR через Next.js и единым UI-подходом.",
-    description:
-      "Собираем интерфейсный слой как систему: дизайн-токены, компонентная архитектура, предсказуемая адаптивность и аккуратная анимация без визуального шума.",
+    summary: "Системный frontend-контур с быстрым delivery и сильной визуальной подачей.",
+    databaseScope: " ",
     stack: [
       "React",
       "TypeScript",
       "Next.js",
+      "Vite",
       "HTML5",
       "CSS3",
       "SASS",
       "Tailwind CSS",
-      "Figma",
-      "Motion",
-      "Storybook",
+      "Framer Motion",
+      "GSAP",
+      "Zustand",
+      "Redux Toolkit",
       "TanStack Query",
+      "SWR",
+      "React Hook Form",
+      "Zod",
+      "Storybook",
+      "Radix UI",
+      "shadcn/ui",
+      "Web Vitals",
+      "Lighthouse",
+      "PWA",
+      "SSR",
+      "ISR",
+      "SSG",
+      "i18n",
+      "Playwright",
+      "Vitest",
+      "Cypress",
+      "Socket.IO Client",
+      "WebSocket",
+      "Figma Tokens",
+      "Design QA",
     ],
-    responsibilities: [
-      "Проектирование UI-структуры и маршрутов",
-      "Система компонентов и типобезопасные интерфейсы",
-      "Интеграция с backend API и обработка состояний",
-    ],
-    delivery: ["Production-ready верстка", "Быстрые итерации UI", "Плавная адаптация под mobile/web"],
-    databaseScope: "Работа с данными через backend-контракты на PostgreSQL.",
   },
   {
     id: "web-backend",
     index: "02",
     title: "Web Backend",
-    summary: "Backend на Node.js и Python для масштабируемой сервисной логики.",
-    description:
-      "Пишем чистый backend-контур: API-дизайн, валидация, бизнес-правила и стабильная интеграция с клиентскими приложениями без лишней сложности.",
+    summary: "Backend-слой с архитектурой под рост, стабильностью и безопасностью.",
+    databaseScope: " ",
     stack: [
       "Node.js",
       "Express",
+      "Fastify",
+      "NestJS",
       "TypeScript",
       "Python",
       "FastAPI",
       "Flask",
+      "Django REST",
       "GraphQL",
       "REST API",
+      "gRPC",
+      "WebSocket Gateway",
       "OpenAPI",
+      "Swagger",
+      "Pydantic",
+      "SQLAlchemy",
+      "Prisma",
+      "Alembic",
       "PostgreSQL",
+      "PostGIS",
+      "Query Optimization",
+      "Connection Pooling",
       "JWT/Auth",
+      "OAuth2",
+      "Rate Limiting",
+      "Background Jobs",
+      "RabbitMQ",
+      "Celery",
+      "Docker",
+      "Nginx",
+      "CI/CD",
+      "Sentry",
+      "Prometheus",
+      "Grafana",
+      "Pytest",
+      "Jest",
     ],
-    responsibilities: [
-      "Проектирование API и схем данных",
-      "Бизнес-логика и безопасность сервисов",
-      "Надежные интеграции с web/mobile-клиентами",
-    ],
-    delivery: ["Стабильные endpoint-ы", "Предсказуемое время ответа", "Прозрачная архитектура под рост"],
-    databaseScope: "Прямая работа с PostgreSQL: схема, запросы, миграции, оптимизация.",
   },
   {
     id: "mobile-ios",
     index: "03",
     title: "Mobile iOS",
-    summary: "Нативный iOS-клиент на Swift/SwiftUI с фокусом на UX-качество.",
-    description:
-      "Формируем мобильный опыт без компромиссов: чистая навигация, устойчивый state management, и аккуратные сценарии взаимодействия под реальные задачи пользователя.",
-    stack: ["Swift", "SwiftUI", "Objective-C", "UIKit", "Combine", "Xcode", "URLSession", "API Integration"],
-    responsibilities: [
-      "Сборка нативных экранов и пользовательских потоков",
-      "Интеграция с backend API и обработка сетевых сценариев",
-      "Подготовка стабильного сборочного контура под демонстрацию",
+    summary: "Нативный iOS-контур с фокусом на качество UX и стабильную доставку фич.",
+    databaseScope: " ",
+    stack: [
+      "Swift",
+      "SwiftUI",
+      "Objective-C",
+      "UIKit",
+      "Combine",
+      "Async/Await",
+      "URLSession",
+      "Alamofire",
+      "MVVM",
+      "Coordinator",
+      "Dependency Injection",
+      "Xcode",
+      "Swift Package Manager",
+      "CocoaPods",
+      "TestFlight",
+      "Fastlane",
+      "Lottie",
+      "MapKit",
+      "CoreLocation",
+      "Push Notifications",
+      "Deep Links",
+      "WidgetKit",
+      "App Clips",
+      "Accessibility",
+      "Instruments",
+      "Snapshot Testing",
+      "UI Testing",
+      "Unit Testing",
+      "API Integration",
+      "Delivery Build",
     ],
-    delivery: ["Высокая отзывчивость UI", "Прозрачная архитектура экранов", "Уверенный demo-ready релиз"],
-    databaseScope: "Получение данных из PostgreSQL через backend API.",
   },
   {
     id: "mobile-android",
     index: "04",
     title: "Mobile Android",
-    summary: "Android-разработка на Kotlin и Jetpack Compose для современного UI.",
-    description:
-      "Делаем Android-часть быстрой и управляемой: composable-подход, чистая структура модулей и надежная интеграция с серверной логикой.",
+    summary: "Android-контур на Kotlin/Compose с современным UI и контролируемой архитектурой.",
+    databaseScope: " ",
     stack: [
       "Kotlin",
       "Jetpack Compose",
       "Android SDK",
       "Coroutines",
+      "Flow",
       "Retrofit",
+      "OkHttp",
+      "Ktor Client",
+      "MVVM",
+      "Clean Architecture",
+      "Hilt",
+      "Koin",
+      "Navigation Component",
+      "WorkManager",
+      "Material 3",
+      "Room",
+      "Android Studio",
+      "Gradle",
+      "KSP",
+      "Lottie",
+      "Coil",
+      "Firebase Crashlytics",
+      "Push Notifications",
+      "Deep Links",
+      "Play Console",
+      "Macrobenchmark",
+      "Espresso",
+      "Unit Testing",
+      "UI Testing",
       "Room-ready Architecture",
       "API Integration",
     ],
-    responsibilities: [
-      "Проектирование composable-интерфейсов",
-      "Оптимизация клиентской производительности",
-      "Подключение бизнес-логики через API-контракты",
-    ],
-    delivery: ["Стабильные Android-сборки", "Современный нативный UI", "Быстрый цикл правок под дедлайн"],
-    databaseScope: "Получение данных из PostgreSQL через backend API.",
   },
   {
     id: "design",
     index: "05",
     title: "Design",
-    summary: "Дизайн-контур для pitch и продукта: от структуры до финальной подачи.",
-    description:
-      "Закрываем визуальную часть продукта и презентации: формируем структуру экранов, подготавливаем материалы для защиты и усиливаем коммуникацию команды.",
+    summary: "Визуальный контур для продукта и защиты: от UX-каркаса до pitch-материалов.",
+    databaseScope: " ",
     stack: [
       "Figma",
+      "FigJam",
+      "Auto Layout",
+      "Components",
+      "Variants",
+      "Design Tokens",
+      "Prototype",
+      "Interaction Design",
       "PowerPoint",
+      "Pitch Deck",
+      "Keynote",
       "Adobe Photoshop",
       "Adobe Illustrator",
+      "Adobe After Effects",
       "Nano Banana",
-      "Motion (Framer Motion)",
-      "Pitch Design",
-      "UI/UX System",
+      "Runway",
+      "Midjourney",
+      "Rive",
+      "Framer",
+      "Motion Specs",
+      "Icon Systems",
+      "Typography Systems",
+      "Grid Systems",
+      "Wireframing",
+      "User Flow",
+      "Information Architecture",
+      "Brand Systems",
+      "Visual Storytelling",
+      "Presentation Design",
+      "Design QA",
+      "UX Research",
     ],
-    responsibilities: [
-      "Каркас экранов, пользовательские флоу и визуальная иерархия",
-      "Подготовка презентации и материалов к защите",
-      "Синхронизация дизайн-решений с frontend-реализацией",
-    ],
-    delivery: ["Понятный UX-фундамент", "Сильная визуальная подача", "Консистентный стиль продукта и pitch"],
-    databaseScope: "Без прямой работы с PostgreSQL: только через продуктовые и интерфейсные сценарии.",
   },
 ]
+
+function buildMarqueeLanes(items: string[]) {
+  const base = Array.from(new Set(items))
+  const pivot = Math.max(1, Math.floor(base.length / 3))
+  const laneOne = base
+  const laneTwo = [...base.slice(pivot), ...base.slice(0, pivot)].reverse()
+  const evenItems = base.filter((_, index) => index % 2 === 0)
+  const oddItems = base.filter((_, index) => index % 2 === 1)
+  const laneThree = [...oddItems, ...evenItems]
+
+  return [laneOne, laneTwo, laneThree] as const
+}
 
 function FadeInBlock({
   children,
@@ -249,76 +335,73 @@ function FadeInBlock({
   )
 }
 
-function StackCard({ block, index }: { block: StackBlock; index: number }) {
+function TechLane({
+  items,
+  direction,
+  duration,
+}: {
+  items: string[]
+  direction: "left" | "right"
+  duration: number
+}) {
+  const repeatedItems = [...items, ...items]
+
+  return (
+    <div className="relative overflow-hidden border-b border-black/18 last:border-b-0">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-14 bg-gradient-to-r from-[#f8f6f1] to-transparent md:w-28" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-14 bg-gradient-to-l from-[#f8f6f1] to-transparent md:w-28" />
+
+      <div
+        className="flex w-max items-center gap-3.5 py-3.5 md:py-4 animate-marquee"
+        style={{
+          animationDuration: `${duration}s`,
+          animationDirection: direction === "right" ? "reverse" : "normal",
+        }}
+      >
+        {repeatedItems.map((item, index) => (
+          <span
+            key={`${item}-${index}`}
+            className="shrink-0 rounded-full border border-black/16 bg-[#f6f4ef] px-4 py-1.5 text-[12px] tracking-[0.1em] text-[#111]/74 uppercase md:px-5 md:py-2 md:text-[13px]"
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function StackDirectionShowcase({ direction, index }: { direction: StackDirection; index: number }) {
   const ref = useRef<HTMLElement | null>(null)
   const isInView = useInView(ref, { once: true, margin: "-90px" })
-  const hoverShift = index % 2 === 0 ? 6 : -6
+  const lanes = useMemo(() => buildMarqueeLanes(direction.stack), [direction.stack])
 
   return (
     <div className="flex justify-center">
-      <motion.article
+      <motion.section
         ref={ref}
         initial={{ opacity: 0, y: 22 }}
-        animate={isInView ? { opacity: 0.75, y: 0 } : undefined}
+        animate={isInView ? { opacity: 1, y: 0 } : undefined}
         transition={{ duration: 0.56, delay: index * 0.08, ease: REVEAL_EASE }}
-        whileHover={{
-          opacity: 1,
-          x: hoverShift,
-          transition: { duration: 0.24, ease: HOVER_EASE },
-        }}
-        className="w-full rounded-[24px] border border-black/12 bg-[#f8f6f1] px-[clamp(18px,2.9vw,34px)] py-[clamp(18px,3.1vw,30px)] md:w-[88%] lg:w-[84%]"
+        className="w-full"
       >
-        <div className="grid gap-8 md:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] md:gap-10">
-          <div>
-            <p className="text-[11px] tracking-[0.2em] text-[#111]/56 uppercase">
-              #{block.index} · {block.title}
-            </p>
-            <h2 className="mt-3 text-[clamp(28px,3.1vw,46px)] leading-[0.94] tracking-[-0.03em] font-semibold text-[#111111]">
-              {block.summary}
-            </h2>
-            <p className="mt-4 max-w-[42ch] text-[clamp(15px,1.2vw,19px)] leading-[1.34] text-[#111]/78">
-              {block.description}
-            </p>
-            <p className="mt-5 text-[11px] leading-[1.5] tracking-[0.12em] text-[#111]/56 uppercase">{block.databaseScope}</p>
-          </div>
-
-          <div>
-            <div className="border-t border-black/12 pt-4">
-              <p className="text-[11px] tracking-[0.14em] text-[#111]/56 uppercase">Технологии</p>
-              <p className="mt-2 hidden text-[12px] leading-[1.6] tracking-[0.1em] text-[#111]/72 uppercase md:block">
-                {block.stack.join(", ")}
-              </p>
-              <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] leading-[1.35] tracking-[0.11em] text-[#111]/66 uppercase md:hidden">
-                {block.stack.map((item) => (
-                  <li key={item} className="border-b border-black/12 pb-1.5">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="mt-5 border-t border-black/12 pt-4">
-              <p className="text-[11px] tracking-[0.14em] text-[#111]/56 uppercase">Что закрываем</p>
-              <ul className="mt-2 space-y-2">
-                {block.responsibilities.map((item) => (
-                  <li key={item} className="text-[14px] leading-[1.35] text-[#111]/78">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="mt-5 border-t border-black/12 pt-4">
-              <p className="text-[11px] tracking-[0.14em] text-[#111]/56 uppercase">Результат за спринт</p>
-              <ul className="mt-2 space-y-2">
-                {block.delivery.map((item) => (
-                  <li key={item} className="text-[14px] leading-[1.35] text-[#111]/78">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        <div className="grid gap-4 md:grid-cols-[minmax(260px,0.34fr)_minmax(0,0.66fr)] md:items-end md:gap-10">
+          <h2 className="text-[clamp(32px,3.9vw,58px)] leading-[0.9] tracking-[-0.03em] font-semibold text-[#111111]">
+            {direction.title}
+          </h2>
+          <p className="max-w-[62ch] text-[clamp(16px,1.35vw,22px)] leading-[1.32] text-[#111]/78">{direction.summary}</p>
         </div>
-      </motion.article>
+
+        <div className="mt-5 border-y border-black/20">
+          <TechLane items={lanes[0]} direction="right" duration={42 + index * 2} />
+          <TechLane items={lanes[1]} direction="left" duration={36 + index * 2} />
+          <TechLane items={lanes[2]} direction="right" duration={46 + index * 2} />
+        </div>
+
+        {direction.databaseScope.trim().length > 0 && (
+          <p className="mt-4 text-[11px] leading-[1.5] tracking-[0.12em] text-[#111]/56 uppercase">{direction.databaseScope}</p>
+        )}
+      </motion.section>
     </div>
   )
 }
@@ -363,9 +446,9 @@ export default function StackPage() {
     <main className="min-h-screen bg-[#f6f4ef] text-[#111111]">
       <div className="mx-auto max-w-6xl px-6 pb-16 pt-14 md:pb-24 md:pt-20">
         <section className="pb-16 md:pb-24">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:items-end lg:gap-12">
+          <div className="grid gap-10 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] xl:items-end xl:gap-12">
             <h1
-              className="text-[clamp(52px,10.4vw,150px)] leading-[0.82] tracking-[-0.05em]"
+              className="min-w-0 max-w-[11ch] text-[clamp(42px,6.2vw,92px)] leading-[0.86] tracking-[-0.045em]"
               style={{
                 opacity: introVisible ? 1 : 0,
                 transform: introVisible ? "translateY(0px)" : "translateY(40px)",
@@ -376,7 +459,7 @@ export default function StackPage() {
             </h1>
 
             <p
-              className="max-w-[38ch] text-[clamp(18px,2.2vw,30px)] leading-[1.2] tracking-[-0.02em] text-[#111]/82"
+              className="min-w-0 max-w-[38ch] text-[clamp(18px,2.2vw,30px)] leading-[1.2] tracking-[-0.02em] text-[#111]/82 xl:justify-self-end"
               style={{
                 opacity: introVisible ? 1 : 0,
                 transition: `opacity 420ms cubic-bezier(0.22,1,0.36,1) 140ms`,
@@ -478,8 +561,8 @@ export default function StackPage() {
 
         <section className="border-t border-black/12 py-16 md:py-24">
           <div className="space-y-4 md:space-y-6">
-            {stackBlocks.map((block, index) => (
-              <StackCard key={block.id} block={block} index={index} />
+            {stackDirections.map((direction, index) => (
+              <StackDirectionShowcase key={direction.id} direction={direction} index={index} />
             ))}
           </div>
         </section>
