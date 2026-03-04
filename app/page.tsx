@@ -573,7 +573,7 @@ export default function Page() {
           className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
           style={{ transform: getFrameTransform(2) }}
         >
-          <WordFrame label="Люди" word="Люди" href="/hero" textProgress={textProgressByFrame[2] ?? 0} />
+          <WordFrame label="Люди" word="Люди" href="/lyudi" textProgress={textProgressByFrame[2] ?? 0} />
         </div>
 
         <div
@@ -586,7 +586,7 @@ export default function Page() {
           <WordFrame
             label="Стэк"
             word="Стэк"
-            href="/services"
+            href="/stek"
             accent={{
               color: "#37c978",
               size: "clamp(340px,48vh,620px)",
