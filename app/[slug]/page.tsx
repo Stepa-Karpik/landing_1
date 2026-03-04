@@ -10,8 +10,10 @@ interface RoutePageProps {
   params: Params
 }
 
+const STATIC_ROUTE_SLUGS = new Set(["craft"])
+
 export function generateStaticParams() {
-  return routeBlocks.map((block) => ({ slug: block.slug }))
+  return routeBlocks.filter((block) => !STATIC_ROUTE_SLUGS.has(block.slug)).map((block) => ({ slug: block.slug }))
 }
 
 export const dynamicParams = false

@@ -1,0 +1,301 @@
+"use client"
+
+import { motion, useInView } from "framer-motion"
+import { type ReactNode, useEffect, useRef, useState } from "react"
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+interface SequenceStep {
+  id: string
+  index: string
+  title: string
+  description: string
+}
+
+interface ProtocolLine {
+  id: string
+  statement: string
+  mark: string
+}
+
+const sequenceSteps: SequenceStep[] = [
+  {
+    id: "brief",
+    index: "01",
+    title: "Фиксируем рамку",
+    description: "Собираем контекст кейса, критерии жюри и список ограничений до начала спринта.",
+  },
+  {
+    id: "decision-map",
+    index: "02",
+    title: "Строим карту решений",
+    description: "Сравниваем варианты по рискам, скорости и влиянию, затем выбираем рабочий вектор.",
+  },
+  {
+    id: "tech-frame",
+    index: "03",
+    title: "Собираем технический каркас",
+    description: "Проектируем архитектуру и контракты, чтобы разработка шла параллельно без блокеров.",
+  },
+  {
+    id: "sprint-split",
+    index: "04",
+    title: "Запускаем спринт 48h",
+    description: "Делим задачи по зонам ответственности и синхронизируемся короткими контрольными срезами.",
+  },
+  {
+    id: "core-build",
+    index: "05",
+    title: "Доставляем ядро",
+    description: "Реализуем критический пользовательский путь и поднимаем демонстрируемый MVP.",
+  },
+  {
+    id: "hardening",
+    index: "06",
+    title: "Доводим до стабильности",
+    description: "Проверяем продукт на баги, интеграционные сбои и UX-разрывы перед защитой.",
+  },
+  {
+    id: "defense-story",
+    index: "07",
+    title: "Упаковываем защиту",
+    description: "Собираем чёткий сторителлинг: проблема, решение, эффект и roadmap развития.",
+  },
+]
+
+const protocolLines: ProtocolLine[] = [
+  { id: "clarity", statement: "Сначала прояснить задачу. Потом писать код.", mark: "Signal" },
+  { id: "scope", statement: "Держать реальный scope. Не обещать лишнее.", mark: "Scope" },
+  { id: "ownership", statement: "У каждой части продукта есть владелец.", mark: "Ownership" },
+  { id: "sync", statement: "Синхронизироваться часто. Решать отклонения сразу.", mark: "Rhythm" },
+  { id: "quality", statement: "Полировать критические места до уверенного состояния.", mark: "Quality" },
+  { id: "result", statement: "Финишировать только тем, что можно защитить и запустить.", mark: "Result" },
+]
+
+function RevealBlock({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode
+  className?: string
+  delay?: number
+}) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const isInView = useInView(ref, { once: true, margin: "-90px" })
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 24 }}
+      animate={isInView ? { opacity: 1, y: 0 } : undefined}
+      transition={{ duration: 0.68, delay, ease: EASE }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+export default function CraftPage() {
+  const [introVisible, setIntroVisible] = useState(false)
+  const sequenceRef = useRef<HTMLOListElement | null>(null)
+  const protocolRef = useRef<HTMLUListElement | null>(null)
+  const finalRef = useRef<HTMLElement | null>(null)
+
+  const sequenceVisible = useInView(sequenceRef, { once: true, margin: "-90px" })
+  const protocolVisible = useInView(protocolRef, { once: true, margin: "-90px" })
+  const finalVisible = useInView(finalRef, { once: true, margin: "-110px" })
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (reducedMotion.matches) {
+      setIntroVisible(true)
+      return
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      setIntroVisible(true)
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [])
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-x-0 top-0 h-[36vh] bg-[radial-gradient(80%_70%_at_50%_0%,rgba(17,17,17,0.08)_0%,rgba(17,17,17,0)_70%)]" />
+        <div className="absolute left-[6%] top-0 h-full w-px bg-black/6" />
+        <div className="absolute right-[6%] top-0 h-full w-px bg-black/6" />
+      </div>
+
+      <div className="mx-auto max-w-6xl px-6 pb-20 pt-14 md:pb-28 md:pt-20">
+        <section className="relative pb-20 md:pb-28">
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
+            <div>
+              <p
+                className="text-[11px] tracking-[0.2em] text-[#111]/56 uppercase"
+                style={{
+                  opacity: introVisible ? 1 : 0,
+                  transform: introVisible ? "translateY(0px)" : "translateY(24px)",
+                  transition: "opacity 620ms cubic-bezier(0.22,1,0.36,1), transform 620ms cubic-bezier(0.22,1,0.36,1)",
+                }}
+              >
+                Operating Mode / 48h
+              </p>
+
+              <h1
+                className="mt-4 text-[clamp(64px,12vw,180px)] leading-[0.8] tracking-[-0.06em]"
+                style={{
+                  opacity: introVisible ? 1 : 0,
+                  transform: introVisible ? "translateY(0px)" : "translateY(32px)",
+                  transition:
+                    "opacity 760ms cubic-bezier(0.22,1,0.36,1) 60ms, transform 760ms cubic-bezier(0.22,1,0.36,1) 60ms",
+                }}
+              >
+                ПОДХОД
+              </h1>
+            </div>
+
+            <div
+              className="lg:justify-self-end"
+              style={{
+                opacity: introVisible ? 1 : 0,
+                transform: introVisible ? "translateY(0px)" : "translateY(32px)",
+                transition:
+                  "opacity 760ms cubic-bezier(0.22,1,0.36,1) 140ms, transform 760ms cubic-bezier(0.22,1,0.36,1) 140ms",
+              }}
+            >
+              <p className="max-w-[36ch] text-[clamp(20px,2.6vw,38px)] leading-[1.14] tracking-[-0.03em] text-[#111]/86">
+                Мы не «успеваем за дедлайн». Мы проектируем темп так, чтобы дедлайн работал на нас.
+              </p>
+              <p className="mt-7 max-w-[56ch] text-[clamp(15px,1.3vw,20px)] leading-[1.45] text-[#111]/72">
+                Эта страница описывает наш рабочий протокол для хакатона: как за 48 часов пройти путь от задачи до
+                уверенной защиты без хаоса, лишних итераций и случайных решений.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t border-black/12 py-20 md:py-28">
+          <div className="grid gap-10 lg:grid-cols-[minmax(190px,0.27fr)_minmax(0,0.73fr)] lg:gap-14">
+            <RevealBlock className="lg:sticky lg:top-12 lg:h-fit">
+              <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Execution Sequence</p>
+              <h2 className="mt-4 text-[clamp(34px,5.2vw,78px)] leading-[0.92] tracking-[-0.04em]">Как мы идём к решению</h2>
+              <p className="mt-5 max-w-[26ch] text-[15px] leading-[1.42] text-[#111]/66">
+                Каждая фаза нужна не «для галочки», а для снятия конкретного класса рисков.
+              </p>
+            </RevealBlock>
+
+            <motion.ol
+              ref={sequenceRef}
+              initial="hidden"
+              animate={sequenceVisible ? "visible" : "hidden"}
+              variants={{
+                hidden: {},
+                visible: {
+                  transition: {
+                    delayChildren: 0.06,
+                    staggerChildren: 0.1,
+                  },
+                },
+              }}
+              className="border-y border-black/12"
+            >
+              {sequenceSteps.map((step) => (
+                <motion.li
+                  key={step.id}
+                  variants={{
+                    hidden: { opacity: 0, x: 36 },
+                    visible: {
+                      opacity: 1,
+                      x: 0,
+                      transition: { duration: 0.5, ease: EASE },
+                    },
+                  }}
+                  className="group relative grid gap-4 border-b border-black/12 py-9 last:border-b-0 md:grid-cols-[72px_minmax(0,1fr)] md:gap-8 md:py-12"
+                >
+                  <p className="font-mono text-[11px] tracking-[0.2em] text-[#111]/56">{step.index}</p>
+                  <div>
+                    <h3 className="text-[clamp(24px,3.7vw,54px)] leading-[0.98] tracking-[-0.03em]">{step.title}</h3>
+                    <p className="mt-3 max-w-[58ch] text-[clamp(15px,1.22vw,20px)] leading-[1.38] text-[#111]/72">
+                      {step.description}
+                    </p>
+                  </div>
+                  <span className="pointer-events-none absolute right-0 top-1/2 hidden -translate-y-1/2 text-[clamp(58px,8vw,120px)] leading-none tracking-[-0.04em] text-black/5 transition-colors duration-300 group-hover:text-black/8 md:block">
+                    {step.index}
+                  </span>
+                </motion.li>
+              ))}
+            </motion.ol>
+          </div>
+        </section>
+
+        <section className="border-t border-black/12 py-20 md:py-28">
+          <RevealBlock>
+            <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Protocol</p>
+            <h2 className="mt-4 max-w-[13ch] text-[clamp(34px,5vw,74px)] leading-[0.94] tracking-[-0.04em]">
+              Принципы, которые держат темп
+            </h2>
+          </RevealBlock>
+
+          <motion.ul
+            ref={protocolRef}
+            initial="hidden"
+            animate={protocolVisible ? "visible" : "hidden"}
+            variants={{
+              hidden: {},
+              visible: {
+                transition: {
+                  delayChildren: 0.07,
+                  staggerChildren: 0.08,
+                },
+              },
+            }}
+            className="mt-10 border-y border-black/12"
+          >
+            {protocolLines.map((line) => (
+              <motion.li
+                key={line.id}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  visible: {
+                    opacity: 1,
+                    y: 0,
+                    transition: { duration: 0.54, ease: EASE },
+                  },
+                }}
+                className="grid gap-4 border-b border-black/12 py-6 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-end"
+              >
+                <p className="text-[clamp(23px,3vw,44px)] leading-[1.08] tracking-[-0.03em]">{line.statement}</p>
+                <p className="font-mono text-[11px] tracking-[0.2em] text-[#111]/50 uppercase">{line.mark}</p>
+              </motion.li>
+            ))}
+          </motion.ul>
+        </section>
+
+        <section ref={finalRef} className="border-t border-black/12 pt-20 md:pt-28">
+          <motion.article
+            initial={{ opacity: 0, y: 20 }}
+            animate={finalVisible ? { opacity: 1, y: 0 } : undefined}
+            transition={{ duration: 0.68, ease: EASE }}
+            className="relative overflow-hidden border border-black/12 bg-[#f7f5ef] px-5 py-8 md:px-10 md:py-12"
+          >
+            <div className="pointer-events-none absolute -right-[12%] top-1/2 h-[280px] w-[280px] -translate-y-1/2 rounded-full border border-black/8" />
+            <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Final Statement</p>
+            <h2 className="mt-5 max-w-[12ch] text-[clamp(44px,8vw,126px)] leading-[0.86] tracking-[-0.05em]">
+              48 часов это достаточный горизонт для сильного продукта.
+            </h2>
+            <p className="mt-7 max-w-[38ch] text-[clamp(18px,2.4vw,34px)] leading-[1.14] tracking-[-0.02em] text-[#111]/84">
+              Когда команда действует как единая инженерная система.
+            </p>
+            <div className="mt-9 h-px w-full bg-black/12" />
+            <p className="mt-4 font-mono text-[11px] tracking-[0.14em] text-[#111]/52 uppercase">
+              Team Nerior / Approach Runtime
+            </p>
+          </motion.article>
+        </section>
+      </div>
+    </main>
+  )
+}
