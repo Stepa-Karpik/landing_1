@@ -14,7 +14,7 @@ import {
 } from "react"
 
 type Rarity = "common" | "rare" | "epic" | "legendary"
-type GameId = "tetris" | "dino" | "minesweeper" | "match3"
+type GameId = "tetris" | "dino" | "minesweeper" | "match3" | "snake" | "game2048" | "breakout" | "simon"
 
 interface GameStatsEntry {
   plays: number
@@ -87,7 +87,16 @@ const STACK_TARGET_MIN = 36
 const REQUIRED_DISCOVERED_LINKS = 20
 
 const MAIN_ROUTES = ["/", "/sostav", "/lyudi", "/stek", "/craft", "/projects", "/works"] as const
-const GAME_ROUTES = ["/minigames/tetris", "/minigames/dino", "/minigames/minesweeper", "/minigames/match3"] as const
+const GAME_ROUTES = [
+  "/minigames/tetris",
+  "/minigames/dino",
+  "/minigames/minesweeper",
+  "/minigames/match3",
+  "/minigames/snake",
+  "/minigames/2048",
+  "/minigames/breakout",
+  "/minigames/simon",
+] as const
 const SITE_ROUTES = [...MAIN_ROUTES, ...GAME_ROUTES] as const
 
 const miniGames: ReadonlyArray<{ id: GameId; label: string; href: (typeof GAME_ROUTES)[number]; goal: string }> = [
@@ -95,6 +104,10 @@ const miniGames: ReadonlyArray<{ id: GameId; label: string; href: (typeof GAME_R
   { id: "dino", label: "Динозаврик", href: "/minigames/dino", goal: "600 очков" },
   { id: "minesweeper", label: "Сапер", href: "/minigames/minesweeper", goal: "1 победа" },
   { id: "match3", label: "Три в ряд", href: "/minigames/match3", goal: "450 очков" },
+  { id: "snake", label: "Змейка", href: "/minigames/snake", goal: "40 очков" },
+  { id: "game2048", label: "2048 4x4", href: "/minigames/2048", goal: "плитка 2048" },
+  { id: "breakout", label: "Breakout / Арканоид", href: "/minigames/breakout", goal: "1 победа" },
+  { id: "simon", label: "Simon", href: "/minigames/simon", goal: "10 шагов" },
 ]
 
 const rarityStyles: Record<Rarity, { badge: string; accent: string }> = {
@@ -141,6 +154,10 @@ const DEFAULT_PROFILE: ProfileData = {
     dino: { ...defaultGameEntry },
     minesweeper: { ...defaultGameEntry },
     match3: { ...defaultGameEntry },
+    snake: { ...defaultGameEntry },
+    game2048: { ...defaultGameEntry },
+    breakout: { ...defaultGameEntry },
+    simon: { ...defaultGameEntry },
   },
 }
 
@@ -255,6 +272,10 @@ function sanitizeProfileData(raw: unknown): ProfileData {
       dino: normalizeEntry(gameStatsRaw.dino),
       minesweeper: normalizeEntry(gameStatsRaw.minesweeper),
       match3: normalizeEntry(gameStatsRaw.match3),
+      snake: normalizeEntry(gameStatsRaw.snake),
+      game2048: normalizeEntry(gameStatsRaw.game2048),
+      breakout: normalizeEntry(gameStatsRaw.breakout),
+      simon: normalizeEntry(gameStatsRaw.simon),
     },
   }
 }
@@ -479,6 +500,34 @@ const achievementDefinitions: AchievementDefinition[] = [
     getProgress: (data) => ({ value: data.gameStats.match3.bestScore, target: 450 }),
   },
   {
+    id: "snake-40",
+    title: "Змейка: выживание",
+    description: "Набрать 40 очков в змейке.",
+    rarity: "epic",
+    getProgress: (data) => ({ value: data.gameStats.snake.bestScore, target: 40 }),
+  },
+  {
+    id: "game2048-tile",
+    title: "2048: собрано",
+    description: "Собрать плитку 2048 на поле 4x4.",
+    rarity: "legendary",
+    getProgress: (data) => ({ value: data.gameStats.game2048.bestScore, target: 2048 }),
+  },
+  {
+    id: "breakout-win",
+    title: "Арканоид: победа",
+    description: "Разбить все кирпичи.",
+    rarity: "epic",
+    getProgress: (data) => ({ value: data.gameStats.breakout.wins, target: 1 }),
+  },
+  {
+    id: "simon-10",
+    title: "Simon: память",
+    description: "Повторить 10 шагов в Simon.",
+    rarity: "epic",
+    getProgress: (data) => ({ value: data.gameStats.simon.bestScore, target: 10 }),
+  },
+  {
     id: "games-master",
     title: "Покоритель мини-игр",
     description: "Выполнить цели всех мини-игр.",
@@ -488,7 +537,14 @@ const achievementDefinitions: AchievementDefinition[] = [
       const dinoDone = data.gameStats.dino.bestScore >= 600 ? 1 : 0
       const minesweeperDone = data.gameStats.minesweeper.wins >= 1 ? 1 : 0
       const match3Done = data.gameStats.match3.bestScore >= 450 ? 1 : 0
-      return { value: tetrisDone + dinoDone + minesweeperDone + match3Done, target: 4 }
+      const snakeDone = data.gameStats.snake.bestScore >= 40 ? 1 : 0
+      const game2048Done = data.gameStats.game2048.bestScore >= 2048 ? 1 : 0
+      const breakoutDone = data.gameStats.breakout.wins >= 1 ? 1 : 0
+      const simonDone = data.gameStats.simon.bestScore >= 10 ? 1 : 0
+      return {
+        value: tetrisDone + dinoDone + minesweeperDone + match3Done + snakeDone + game2048Done + breakoutDone + simonDone,
+        target: 8,
+      }
     },
   },
   {
@@ -1200,3 +1256,4 @@ export function useProfileTracker() {
   }
   return context
 }
+
