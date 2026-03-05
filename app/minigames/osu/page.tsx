@@ -1681,6 +1681,11 @@ export default function OsuLikePage() {
       recordGameResult("osu", {
         score: session.score,
         win: !forcedFail && accuracy >= 90,
+        trackId: session.trackId,
+        difficulty: session.difficulty,
+        accuracy,
+        maxCombo: session.maxCombo,
+        cleared: !forcedFail,
       })
 
       setResult(resultPayload)
@@ -2558,7 +2563,7 @@ export default function OsuLikePage() {
                 <img src={selectedBackground.src} alt="Game background" className="absolute inset-0 h-full w-full object-cover" />
               )}
 
-              <div className="absolute inset-0 bg-black transition-opacity duration-200" style={{ opacity: clamp(backgroundDim / 100, 0, 0.8) }} />
+              <div className="absolute inset-0 bg-black transition-opacity duration-200" style={{ opacity: clamp(backgroundDim / 100, 0, 1) }} />
 
               <canvas
                 ref={canvasRef}
@@ -2711,6 +2716,14 @@ export default function OsuLikePage() {
                 </div>
               )}
 
+              {(phase === "playing" || phase === "paused" || phase === "countdown") && (
+                <div className="pointer-events-none absolute bottom-4 left-4 z-30 text-white">
+                  <p className="text-[clamp(30px,4vw,52px)] font-black leading-none tracking-[-0.02em] drop-shadow-[0_5px_14px_rgba(0,0,0,0.45)]">
+                    X{hud.combo}
+                  </p>
+                </div>
+              )}
+
               <div className="pointer-events-none absolute right-3 top-3 z-30 rounded-md border border-white/35 bg-[#f9d8e7]/34 px-3 py-2 text-white backdrop-blur-sm">
                 <p className="text-xs tracking-[0.12em] uppercase">Accuracy</p>
                 <p className="mt-1 text-lg font-semibold leading-none">{hud.accuracy.toFixed(2)}%</p>
@@ -2809,7 +2822,7 @@ export default function OsuLikePage() {
                       <input
                         type="range"
                         min={0}
-                        max={80}
+                        max={100}
                         value={backgroundDim}
                         onChange={(event) => setBackgroundDim(Number(event.target.value))}
                         className="mt-1.5 w-full accent-[#ff79af]"
