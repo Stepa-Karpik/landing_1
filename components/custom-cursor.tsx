@@ -121,6 +121,7 @@ export function CustomCursor() {
     <div aria-hidden data-global-cursor="1" className="pointer-events-none fixed inset-0 z-[9999] select-none">
       <div
         ref={orbRef}
+        data-global-cursor-orb="1"
         className="fixed left-0 top-0 rounded-full"
         style={{
           width: `${ORB_IDLE_SIZE}px`,
@@ -135,6 +136,7 @@ export function CustomCursor() {
 
       <div
         ref={shapeRef}
+        data-global-cursor-shape="1"
         className="fixed left-0 top-0 aspect-square bg-black"
         style={{
           width: "clamp(20px, 1.35vw, 24px)",

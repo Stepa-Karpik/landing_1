@@ -63,6 +63,7 @@ interface RuntimeNote extends BeatObject {
   index: number
   judged: Judgement | null
   judgedAtMs: number | null
+  isHolding?: boolean
 }
 
 interface HitEffect {
@@ -85,11 +86,20 @@ interface HudState {
 }
 
 interface ResultState extends HudState {
-  ranking: "S" | "A" | "B" | "C" | "D"
+  ranking: "SS" | "S" | "A" | "B" | "C" | "D"
   trackId: 1 | 2 | 3
   difficulty: Difficulty
   bestScore: number
   failed: boolean
+}
+
+interface ActiveSliderState {
+  noteIndex: number
+  startDeltaMs: number
+  startMs: number
+  endMs: number
+  coveredMs: number
+  lastSampleMs: number
 }
 
 interface GameSession {
@@ -114,6 +124,7 @@ interface GameSession {
   effects: HitEffect[]
   hudLastPushMs: number
   finished: boolean
+  activeSlider: ActiveSliderState | null
 }
 
 type BestScoresMap = Record<string, number>
@@ -204,11 +215,22 @@ function accuracyOf(totalHitValue: number, totalObjects: number) {
   return clamp((totalHitValue / (totalObjects * 300)) * 100, 0, 100)
 }
 
-function rankingFromAccuracy(accuracy: number): ResultState["ranking"] {
-  if (accuracy >= 95) return "S"
-  if (accuracy >= 90) return "A"
-  if (accuracy >= 80) return "B"
-  if (accuracy >= 70) return "C"
+function rankingFromStats(
+  accuracy: number,
+  count300: number,
+  count100: number,
+  count50: number,
+  countMiss: number,
+): ResultState["ranking"] {
+  const totalJudged = count300 + count100 + count50 + countMiss
+  if (totalJudged <= 0) return "D"
+
+  const ratio300 = count300 / totalJudged
+  if (countMiss === 0 && count100 === 0 && count50 === 0 && accuracy >= 99.99) return "SS"
+  if (countMiss === 0 && accuracy >= 95 && ratio300 >= 0.78) return "S"
+  if (accuracy >= 90 && countMiss <= Math.max(1, Math.floor(totalJudged * 0.02))) return "A"
+  if (accuracy >= 82) return "B"
+  if (accuracy >= 72) return "C"
   return "D"
 }
 
@@ -379,6 +401,42 @@ function distanceToSlider(
   return { distance: bestDistance, x: bestX, y: bestY }
 }
 
+function pointAtPolylineProgress(points: Array<{ x: number; y: number }>, progress: number) {
+  if (points.length === 0) return { x: 0, y: 0 }
+  if (points.length === 1) return points[0]
+
+  const segmentLengths: number[] = []
+  let totalLength = 0
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const current = points[index]
+    const next = points[index + 1]
+    const dx = next.x - current.x
+    const dy = next.y - current.y
+    const length = Math.sqrt(dx * dx + dy * dy)
+    segmentLengths.push(length)
+    totalLength += length
+  }
+  if (totalLength <= 0.0001) return points[0]
+
+  const target = clamp(progress, 0, 1) * totalLength
+  let passed = 0
+  for (let index = 0; index < segmentLengths.length; index += 1) {
+    const segmentLength = segmentLengths[index]
+    if (passed + segmentLength >= target) {
+      const current = points[index]
+      const next = points[index + 1]
+      const local = (target - passed) / Math.max(segmentLength, 0.0001)
+      return {
+        x: current.x + (next.x - current.x) * local,
+        y: current.y + (next.y - current.y) * local,
+      }
+    }
+    passed += segmentLength
+  }
+
+  return points[points.length - 1]
+}
+
 async function urlExists(url: string) {
   try {
     const head = await fetch(url, { method: "HEAD", cache: "no-store" })
@@ -423,6 +481,7 @@ export default function OsuLikePage() {
   })
 
   const [result, setResult] = useState<ResultState | null>(null)
+  const [resultVisible, setResultVisible] = useState(false)
   const [bestScores, setBestScores] = useState<BestScoresMap>({})
   const [renderNowMs, setRenderNowMs] = useState(0)
   const [fieldSize, setFieldSize] = useState({ width: 1280, height: 720 })
@@ -437,6 +496,7 @@ export default function OsuLikePage() {
   const cursorTrailRef = useRef<Array<{ x: number; y: number; t: number }>>([])
   const isSetupPanelHoveredRef = useRef(false)
   const armingStartedAtRef = useRef(0)
+  const isPointerDownRef = useRef(false)
 
   const audioCtxRef = useRef<AudioContext | null>(null)
   const musicGainRef = useRef<GainNode | null>(null)
@@ -550,16 +610,24 @@ export default function OsuLikePage() {
   }, [phase])
 
   useEffect(() => {
-    const gameplayCursor = phase === "playing" || phase === "countdown" || phase === "arming"
-    if (gameplayCursor) {
-      document.body.setAttribute("data-osu-cursor-mode", "game")
+    const mode =
+      phase === "playing" || phase === "countdown"
+        ? "game"
+        : phase === "arming"
+          ? isSetupPanelHovered
+            ? "panel"
+            : "game"
+          : null
+
+    if (mode) {
+      document.body.setAttribute("data-osu-cursor-mode", mode)
     } else {
       document.body.removeAttribute("data-osu-cursor-mode")
     }
     return () => {
       document.body.removeAttribute("data-osu-cursor-mode")
     }
-  }, [phase])
+  }, [isSetupPanelHovered, phase])
 
   useEffect(() => {
     const gameplayCursor = phase === "playing" || phase === "countdown" || phase === "arming"
@@ -583,6 +651,19 @@ export default function OsuLikePage() {
       window.cancelAnimationFrame(rafId)
     }
   }, [phase])
+
+  useEffect(() => {
+    if (phase !== "results") {
+      setResultVisible(false)
+      return
+    }
+    const timeoutId = window.setTimeout(() => {
+      setResultVisible(true)
+    }, 24)
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [phase, result])
 
   useEffect(() => {
     try {
@@ -677,18 +758,28 @@ export default function OsuLikePage() {
       .filter((note) => {
         if (note.judged) return false
         const delta = note.tMs - timelineMs
+        if (note.kind === "slider") {
+          const sliderEndMs = note.tMs + note.durationMs
+          return delta <= session.settings.approachMs && timelineMs <= sliderEndMs + session.settings.hit50
+        }
         return delta <= session.settings.approachMs && delta >= -session.settings.hit50
       })
       .map((note) => {
         const radius = noteRadiusPx(note, session.settings, width, height)
         const position = notePosition(note, width, height, radius)
         const delta = note.tMs - timelineMs
-        const approachProgress = clamp(delta / session.settings.approachMs, 0, 1)
+        const approachProgress = note.kind === "slider" && timelineMs > note.tMs ? 0 : clamp(delta / session.settings.approachMs, 0, 1)
         const approachRadius = radius * (1 + approachProgress * 1.8)
         const color = circleColorByIndex(note.index)
         const sliderPoints =
           note.kind === "slider"
             ? note.points.map((point) => notePosition({ kind: "circle", tMs: note.tMs, x: point.x, y: point.y }, width, height, radius))
+            : null
+        const sliderProgress =
+          note.kind === "slider" ? clamp((timelineMs - note.tMs) / Math.max(note.durationMs, 1), 0, 1) : null
+        const sliderBall =
+          note.kind === "slider" && sliderPoints && sliderPoints.length > 1 && sliderProgress !== null
+            ? pointAtPolylineProgress(sliderPoints, sliderProgress)
             : null
         return {
           id: note.index,
@@ -699,6 +790,8 @@ export default function OsuLikePage() {
           approachRadius,
           color,
           sliderPoints,
+          sliderProgress,
+          sliderBall,
         }
       })
   }, [fieldSize.height, fieldSize.width, phase, renderNowMs])
@@ -769,7 +862,13 @@ export default function OsuLikePage() {
       cancelRaf()
 
       const accuracy = accuracyOf(session.totalHitValue, session.totalObjects)
-      const ranking = rankingFromAccuracy(accuracy)
+      const ranking = rankingFromStats(
+        accuracy,
+        session.count300,
+        session.count100,
+        session.count50,
+        session.countMiss,
+      )
       const storageKey = bestKey(session.trackId, session.difficulty)
       const previousBest = bestScores[storageKey] ?? 0
       const nextBest = Math.max(previousBest, session.score)
@@ -867,6 +966,7 @@ export default function OsuLikePage() {
       const canvas = canvasRef.current
       const session = gameSessionRef.current
       if (!canvas || !session) return
+      if (session.activeSlider) return
 
       const nowMs = getCurrentGameTimeMs()
       const width = canvas.clientWidth
@@ -874,7 +974,15 @@ export default function OsuLikePage() {
       const radiusBase = session.settings.radiusPx * scaleByViewport(width, height)
       const tolerance = Math.max(8, radiusBase * 0.18)
 
-      let candidate: { note: RuntimeNote; delta: number; distance: number; hitX: number; hitY: number } | null = null
+      let candidate:
+        | {
+            note: RuntimeNote
+            delta: number
+            distance: number
+            hitX: number
+            hitY: number
+          }
+        | null = null
       for (const note of session.notes) {
         if (note.judged) continue
         const delta = Math.abs(nowMs - note.tMs)
@@ -911,6 +1019,29 @@ export default function OsuLikePage() {
       if (!candidate) return
 
       const delta = candidate.delta
+
+      if (candidate.note.kind === "slider") {
+        if (candidate.note.isHolding || session.activeSlider) return
+        candidate.note.isHolding = true
+        session.activeSlider = {
+          noteIndex: candidate.note.index,
+          startDeltaMs: delta,
+          startMs: nowMs,
+          endMs: candidate.note.tMs + candidate.note.durationMs,
+          coveredMs: 0,
+          lastSampleMs: nowMs,
+        }
+        session.effects.push({
+          x: candidate.hitX,
+          y: candidate.hitY,
+          judgement: "100",
+          startedMs: nowMs,
+          color: circleColorByIndex(candidate.note.index),
+        })
+        void playHitSound("100")
+        return
+      }
+
       let judgement: Judgement = "miss"
       if (delta <= session.settings.hit300) judgement = "300"
       else if (delta <= session.settings.hit100) judgement = "100"
@@ -918,7 +1049,7 @@ export default function OsuLikePage() {
 
       await judgeNote(candidate.note, judgement, nowMs, candidate.hitX, candidate.hitY)
     },
-    [getCurrentGameTimeMs, judgeNote],
+    [getCurrentGameTimeMs, judgeNote, playHitSound],
   )
 
   const rafTick = useCallback(() => {
@@ -926,13 +1057,60 @@ export default function OsuLikePage() {
     if (!session || phaseRef.current !== "playing") return
 
     const nowMs = getCurrentGameTimeMs()
+    const canvas = canvasRef.current
+    const width = canvas?.clientWidth ?? 1280
+    const height = canvas?.clientHeight ?? 720
+
+    const activeSlider = session.activeSlider
+    if (activeSlider) {
+      const sliderNote = session.notes.find((note) => note.index === activeSlider.noteIndex)
+      if (!sliderNote || sliderNote.kind !== "slider" || sliderNote.judged) {
+        session.activeSlider = null
+      } else {
+        const elapsedSample = Math.max(0, nowMs - activeSlider.lastSampleMs)
+        if (elapsedSample > 0) {
+          const pointer = pointerRef.current
+          const radius = noteRadiusPx(sliderNote, session.settings, width, height)
+          const path = sliderNote.points.map((point) =>
+            notePosition({ kind: "circle", tMs: sliderNote.tMs, x: point.x, y: point.y }, width, height, radius),
+          )
+          if (isPointerDownRef.current && pointer) {
+            const nearest = distanceToSlider(pointer.x, pointer.y, path)
+            const followTolerance = radius * 0.82
+            if (nearest.distance <= radius + followTolerance) {
+              activeSlider.coveredMs += elapsedSample
+            }
+          }
+          activeSlider.lastSampleMs = nowMs
+        }
+
+        if (nowMs >= activeSlider.endMs) {
+          const holdRatio = clamp(activeSlider.coveredMs / Math.max(sliderNote.durationMs, 1), 0, 1)
+          let judgement: Judgement = "miss"
+          if (activeSlider.startDeltaMs <= session.settings.hit300 && holdRatio >= 0.9) judgement = "300"
+          else if (activeSlider.startDeltaMs <= session.settings.hit100 && holdRatio >= 0.72) judgement = "100"
+          else if (holdRatio >= 0.45) judgement = "50"
+
+          session.activeSlider = null
+          sliderNote.isHolding = false
+          const tail = sliderNote.points[sliderNote.points.length - 1] ?? sliderNote.points[0] ?? { x: 0.5, y: 0.5 }
+          const tailPosition = notePosition(
+            { kind: "circle", tMs: sliderNote.tMs, x: tail.x, y: tail.y },
+            width,
+            height,
+            noteRadiusPx(sliderNote, session.settings, width, height),
+          )
+          void judgeNote(sliderNote, judgement, nowMs, tailPosition.x, tailPosition.y)
+        } else {
+          sliderNote.isHolding = true
+        }
+      }
+    }
 
     for (const note of session.notes) {
       if (note.judged) continue
+      if (note.isHolding) continue
       if (nowMs > note.tMs + session.settings.hit50) {
-        const canvas = canvasRef.current
-        const width = canvas?.clientWidth ?? 1280
-        const height = canvas?.clientHeight ?? 720
         const radius = noteRadiusPx(note, session.settings, width, height)
         const position = notePosition(note, width, height, radius)
         void judgeNote(note, "miss", nowMs, position.x, position.y)
@@ -959,6 +1137,7 @@ export default function OsuLikePage() {
     clearArmingTimeout()
     cancelRaf()
     stopGameAudio()
+    isPointerDownRef.current = false
     gameSessionRef.current = null
     setCountdownLabel(null)
   }, [cancelRaf, clearArmingTimeout, stopGameAudio])
@@ -1026,6 +1205,7 @@ export default function OsuLikePage() {
       effects: [],
       hudLastPushMs: 0,
       finished: false,
+      activeSlider: null,
     }
 
     source.onended = () => {
@@ -1236,6 +1416,20 @@ export default function OsuLikePage() {
   }, [handleHitAt, pauseGame, phase, restartGame, resumeGame])
 
   useEffect(() => {
+    const releasePointer = () => {
+      isPointerDownRef.current = false
+    }
+    window.addEventListener("pointerup", releasePointer)
+    window.addEventListener("pointercancel", releasePointer)
+    window.addEventListener("blur", releasePointer)
+    return () => {
+      window.removeEventListener("pointerup", releasePointer)
+      window.removeEventListener("pointercancel", releasePointer)
+      window.removeEventListener("blur", releasePointer)
+    }
+  }, [])
+
+  useEffect(() => {
     const resizeCanvas = () => {
       const wrap = canvasWrapRef.current
       const canvas = canvasRef.current
@@ -1288,6 +1482,7 @@ export default function OsuLikePage() {
 
   const onCanvasPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     event.preventDefault()
+    isPointerDownRef.current = true
     const rect = event.currentTarget.getBoundingClientRect()
     const x = event.clientX - rect.left
     const y = event.clientY - rect.top
@@ -1319,6 +1514,10 @@ export default function OsuLikePage() {
 
   const onCanvasPointerLeave = () => {
     setCursorPoint((previous) => ({ ...previous, visible: false }))
+  }
+
+  const onCanvasPointerUp = () => {
+    isPointerDownRef.current = false
   }
 
   const difficultyLabel = difficultyConfig ? selectedDifficulty.toUpperCase() : "EASY"
@@ -1468,7 +1667,7 @@ export default function OsuLikePage() {
         )}
 
         {(phase === "arming" || phase === "countdown" || phase === "playing" || phase === "paused" || phase === "results") && (
-          <section ref={gameplayRootRef} className="h-[100dvh] overflow-hidden rounded-xl border border-black/15 bg-[#140914]">
+          <section ref={gameplayRootRef} className="fixed inset-0 z-[80] h-[100dvh] overflow-hidden bg-[#140914]">
             <div ref={canvasWrapRef} className="relative h-full w-full overflow-hidden bg-black">
               {selectedBackground?.kind === "video" && (
                 <video src={selectedBackground.src} className="absolute inset-0 h-full w-full object-cover" muted loop autoPlay playsInline />
@@ -1482,10 +1681,14 @@ export default function OsuLikePage() {
               <canvas
                 ref={canvasRef}
                 className={`absolute inset-0 z-10 h-full w-full touch-none ${
-                  phase === "playing" || phase === "countdown" || phase === "arming" ? "cursor-none" : ""
+                  phase === "playing" || phase === "countdown" || (phase === "arming" && !isSetupPanelHovered)
+                    ? "cursor-none"
+                    : ""
                 }`}
                 onPointerDown={onCanvasPointerDown}
                 onPointerMove={onCanvasPointerMove}
+                onPointerUp={onCanvasPointerUp}
+                onPointerCancel={onCanvasPointerUp}
                 onPointerLeave={onCanvasPointerLeave}
               />
 
@@ -1529,6 +1732,16 @@ export default function OsuLikePage() {
                         strokeWidth={Math.max(2, note.radius * 0.1)}
                       />
                     )}
+                    {note.kind === "slider" && note.sliderBall && (
+                      <circle
+                        cx={note.sliderBall.x}
+                        cy={note.sliderBall.y}
+                        r={Math.max(3, note.radius * 0.52)}
+                        fill="rgba(255,255,255,0.94)"
+                        stroke={`${note.color}f0`}
+                        strokeWidth={Math.max(1.8, note.radius * 0.08)}
+                      />
+                    )}
                   </g>
                 ))}
 
@@ -1556,7 +1769,7 @@ export default function OsuLikePage() {
                 ))}
               </svg>
 
-              {(phase === "playing" || phase === "countdown" || phase === "arming") && (
+              {(phase === "playing" || phase === "countdown" || (phase === "arming" && !isSetupPanelHovered)) && (
                 <div className="pointer-events-none absolute inset-0 z-40">
                   {cursorTrail.map((point, index) => {
                     const age = performance.now() - point.t
@@ -1714,10 +1927,14 @@ export default function OsuLikePage() {
               )}
 
               {phase === "results" && result && (
-                <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#2b0f1e]/58 p-4">
-                  <div className="w-full max-w-md rounded-lg border border-[#f8bfd8]/45 bg-[#f9d8e7]/26 p-4 text-[#fff6fb] backdrop-blur">
+                <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#180914]/58 p-4 backdrop-blur-[2px]">
+                  <div
+                    className={`w-full max-w-md rounded-lg border border-[#f8bfd8]/45 bg-[#f9d8e7]/28 p-4 text-[#fff6fb] backdrop-blur transition-all duration-500 ${
+                      resultVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-95 opacity-0"
+                    }`}
+                  >
                     <p className="text-[11px] tracking-[0.15em] text-[#ffe8f3] uppercase">Result</p>
-                    <h2 className="mt-1 text-2xl font-semibold tracking-[-0.02em]">{result.ranking}</h2>
+                    <h2 className="mt-1 text-3xl font-semibold tracking-[-0.02em]">Rank {result.ranking}</h2>
                     {result.failed && <p className="mt-1 text-sm text-[#ffd6ea]">Failed: 5 misses in a row.</p>}
                     <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                       <p>Score: {result.score}</p>

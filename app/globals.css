@@ -307,3 +307,21 @@ body[data-osu-cursor-mode="game"] [data-global-cursor="1"] {
   opacity: 0 !important;
   visibility: hidden !important;
 }
+
+body[data-osu-cursor-mode="panel"] [data-global-cursor="1"] {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+body[data-osu-cursor-mode="panel"] [data-global-cursor-orb="1"] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+body[data-osu-cursor-mode="panel"] [data-global-cursor-shape="1"] {
+  width: 10px !important;
+  clip-path: none !important;
+  border-radius: 9999px !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65), 0 0 10px rgba(255, 255, 255, 0.42) !important;
+}
