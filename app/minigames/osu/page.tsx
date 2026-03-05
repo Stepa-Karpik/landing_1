@@ -26,12 +26,22 @@ interface DifficultySettings {
   sliderDurationMs: [number, number]
 }
 
+interface TrackTimingAnalysis {
+  bpm: number
+  beatPeriodMs: number
+  firstBeatMs: number
+  beatTimesMs: number[]
+  onsetTimesMs: number[]
+  restIntervals: Array<{ startMs: number; endMs: number }>
+}
+
 interface TrackAsset {
   id: 1 | 2 | 3
   title: string
   src: string
   durationMs: number
   buffer: AudioBuffer
+  analysis: TrackTimingAnalysis
 }
 
 interface BackgroundAsset {
@@ -284,21 +294,356 @@ function pullPoint(object: BeatObject) {
   return object.points[0] ?? { x: 0.5, y: 0.5 }
 }
 
-function generateBeatmap(trackId: 1 | 2 | 3, difficulty: Difficulty, durationMs: number): BeatObject[] {
+function percentile(values: number[], ratio: number) {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const index = clamp(Math.round((sorted.length - 1) * ratio), 0, sorted.length - 1)
+  return sorted[index]
+}
+
+function smoothSeries(values: number[], radius: number) {
+  if (radius <= 0 || values.length <= 2) return [...values]
+  const smoothed = new Array<number>(values.length)
+  for (let index = 0; index < values.length; index += 1) {
+    let sum = 0
+    let count = 0
+    for (let offset = -radius; offset <= radius; offset += 1) {
+      const target = index + offset
+      if (target < 0 || target >= values.length) continue
+      sum += values[target]
+      count += 1
+    }
+    smoothed[index] = count > 0 ? sum / count : values[index]
+  }
+  return smoothed
+}
+
+function monoFromBuffer(buffer: AudioBuffer) {
+  const { length, numberOfChannels } = buffer
+  if (numberOfChannels <= 1) {
+    return buffer.getChannelData(0).slice()
+  }
+
+  const mono = new Float32Array(length)
+  for (let channel = 0; channel < numberOfChannels; channel += 1) {
+    const data = buffer.getChannelData(channel)
+    for (let index = 0; index < length; index += 1) {
+      mono[index] += data[index]
+    }
+  }
+  const gain = 1 / numberOfChannels
+  for (let index = 0; index < length; index += 1) {
+    mono[index] *= gain
+  }
+  return mono
+}
+
+async function renderBandPassSamples(
+  monoSamples: Float32Array,
+  sampleRate: number,
+  lowHz: number,
+  highHz: number,
+) {
+  try {
+    const offlineCtor =
+      window.OfflineAudioContext ??
+      (window as Window & { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext
+    if (!offlineCtor) {
+      return monoSamples.slice()
+    }
+
+    const offline = new offlineCtor(1, monoSamples.length, sampleRate)
+    const sourceBuffer = offline.createBuffer(1, monoSamples.length, sampleRate)
+    sourceBuffer.copyToChannel(monoSamples, 0)
+
+    const source = offline.createBufferSource()
+    source.buffer = sourceBuffer
+
+    const highPass = offline.createBiquadFilter()
+    highPass.type = "highpass"
+    highPass.frequency.value = lowHz
+    highPass.Q.value = 0.707
+
+    const lowPass = offline.createBiquadFilter()
+    lowPass.type = "lowpass"
+    lowPass.frequency.value = highHz
+    lowPass.Q.value = 0.707
+
+    source.connect(highPass)
+    highPass.connect(lowPass)
+    lowPass.connect(offline.destination)
+    source.start(0)
+
+    const rendered = await offline.startRendering()
+    return rendered.getChannelData(0).slice()
+  } catch {
+    return monoSamples.slice()
+  }
+}
+
+function frameRmsSeries(samples: Float32Array, frameSize: number) {
+  const frames = Math.max(1, Math.floor(samples.length / frameSize))
+  const rms = new Array<number>(frames).fill(0)
+  for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+    const start = frameIndex * frameSize
+    const end = Math.min(samples.length, start + frameSize)
+    let sumSquares = 0
+    for (let index = start; index < end; index += 1) {
+      const sample = samples[index]
+      sumSquares += sample * sample
+    }
+    rms[frameIndex] = Math.sqrt(sumSquares / Math.max(1, end - start))
+  }
+  return rms
+}
+
+function detectRestIntervals(
+  fullRms: number[],
+  vocalRms: number[],
+  frameMs: number,
+) {
+  const nonSilentThreshold = percentile(fullRms, 0.22) * 1.06
+  const vocalRatio = fullRms.map((value, index) => vocalRms[index] / Math.max(0.000001, value))
+  const smoothRatio = smoothSeries(vocalRatio, 3)
+  const voicedPool = smoothRatio.filter((_, index) => fullRms[index] > nonSilentThreshold)
+  const ratioPivot = voicedPool.length > 0 ? percentile(voicedPool, 0.62) : percentile(smoothRatio, 0.62)
+  const ratioThreshold = ratioPivot * 0.78
+
+  const minRestFrames = Math.max(1, Math.round(1600 / frameMs))
+  const mergeGapFrames = Math.max(1, Math.round(520 / frameMs))
+  const intervals: Array<{ startMs: number; endMs: number }> = []
+
+  let runStart = -1
+  let lastRestFrame = -1
+  for (let index = 0; index < smoothRatio.length; index += 1) {
+    const isRestFrame = fullRms[index] > nonSilentThreshold && smoothRatio[index] < ratioThreshold
+
+    if (isRestFrame) {
+      if (runStart < 0) {
+        runStart = index
+      }
+      lastRestFrame = index
+      continue
+    }
+
+    if (runStart >= 0) {
+      const framesCount = lastRestFrame - runStart + 1
+      if (framesCount >= minRestFrames) {
+        const startMs = runStart * frameMs
+        const endMs = (lastRestFrame + 1) * frameMs
+        const previous = intervals[intervals.length - 1]
+        if (previous && startMs - previous.endMs <= mergeGapFrames * frameMs) {
+          previous.endMs = endMs
+        } else {
+          intervals.push({ startMs, endMs })
+        }
+      }
+      runStart = -1
+      lastRestFrame = -1
+    }
+  }
+
+  if (runStart >= 0 && lastRestFrame >= runStart) {
+    const framesCount = lastRestFrame - runStart + 1
+    if (framesCount >= minRestFrames) {
+      intervals.push({
+        startMs: runStart * frameMs,
+        endMs: (lastRestFrame + 1) * frameMs,
+      })
+    }
+  }
+
+  return intervals
+}
+
+function detectBeatGrid(
+  fullRms: number[],
+  frameSec: number,
+  durationMs: number,
+) {
+  const onset = fullRms.map((value, index) => (index === 0 ? 0 : Math.max(0, value - fullRms[index - 1])))
+  const onsetSmooth = smoothSeries(onset, 2)
+
+  const minLag = Math.max(2, Math.round((60 / 190) / frameSec))
+  const maxLag = Math.max(minLag + 1, Math.round((60 / 72) / frameSec))
+  let bestLag = Math.max(2, Math.round((60 / 120) / frameSec))
+  let bestScore = -1
+
+  for (let lag = minLag; lag <= maxLag; lag += 1) {
+    let score = 0
+    for (let index = lag; index < onsetSmooth.length; index += 1) {
+      score += onsetSmooth[index] * onsetSmooth[index - lag]
+    }
+    if (score > bestScore) {
+      bestScore = score
+      bestLag = lag
+    }
+  }
+
+  const bpm = clamp(60 / (bestLag * frameSec), 72, 190)
+  const beatPeriodMs = (60 * 1000) / bpm
+
+  const phaseScores = new Array(bestLag).fill(0)
+  for (let index = 0; index < onsetSmooth.length; index += 1) {
+    phaseScores[index % bestLag] += onsetSmooth[index]
+  }
+  let bestPhase = 0
+  for (let index = 1; index < phaseScores.length; index += 1) {
+    if (phaseScores[index] > phaseScores[bestPhase]) {
+      bestPhase = index
+    }
+  }
+  const firstBeatMs = bestPhase * frameSec * 1000
+
+  const beatTimesMs: number[] = []
+  for (let tMs = firstBeatMs; tMs <= durationMs; tMs += beatPeriodMs) {
+    beatTimesMs.push(tMs)
+  }
+
+  const onsetThreshold = percentile(onsetSmooth, 0.84)
+  const onsetTimesMs: number[] = []
+  for (let index = 1; index < onsetSmooth.length - 1; index += 1) {
+    const value = onsetSmooth[index]
+    if (value < onsetThreshold) continue
+    if (value < onsetSmooth[index - 1] || value < onsetSmooth[index + 1]) continue
+    onsetTimesMs.push(index * frameSec * 1000)
+  }
+
+  return { bpm, beatPeriodMs, firstBeatMs, beatTimesMs, onsetTimesMs }
+}
+
+async function analyzeTrackTiming(buffer: AudioBuffer): Promise<TrackTimingAnalysis> {
+  const mono = monoFromBuffer(buffer)
+  const frameSize = Math.max(384, Math.round(buffer.sampleRate * 0.02))
+  const frameSec = frameSize / buffer.sampleRate
+  const frameMs = frameSec * 1000
+
+  const fullRms = frameRmsSeries(mono, frameSize)
+  const vocalBand = await renderBandPassSamples(mono, buffer.sampleRate, 220, 3400)
+  const vocalRms = frameRmsSeries(vocalBand, frameSize)
+
+  const beatGrid = detectBeatGrid(fullRms, frameSec, buffer.duration * 1000)
+  const restIntervals = detectRestIntervals(fullRms, vocalRms, frameMs)
+
+  return {
+    bpm: beatGrid.bpm,
+    beatPeriodMs: beatGrid.beatPeriodMs,
+    firstBeatMs: beatGrid.firstBeatMs,
+    beatTimesMs: beatGrid.beatTimesMs,
+    onsetTimesMs: beatGrid.onsetTimesMs,
+    restIntervals,
+  }
+}
+
+function isInsideRestInterval(timeMs: number, intervals: Array<{ startMs: number; endMs: number }>) {
+  for (const interval of intervals) {
+    if (timeMs >= interval.startMs && timeMs <= interval.endMs) return true
+  }
+  return false
+}
+
+function isInsideRestIntervalWithMargin(
+  timeMs: number,
+  intervals: Array<{ startMs: number; endMs: number }>,
+  beforeMs: number,
+  afterMs: number,
+) {
+  for (const interval of intervals) {
+    if (timeMs >= interval.startMs - beforeMs && timeMs <= interval.endMs + afterMs) return true
+  }
+  return false
+}
+
+function snapToNearestOnset(
+  timeMs: number,
+  onsetTimesMs: number[],
+  maxOffsetMs: number,
+) {
+  if (onsetTimesMs.length === 0) return timeMs
+
+  let low = 0
+  let high = onsetTimesMs.length - 1
+  while (low <= high) {
+    const middle = (low + high) >> 1
+    const value = onsetTimesMs[middle]
+    if (value < timeMs) low = middle + 1
+    else high = middle - 1
+  }
+
+  const candidates = [onsetTimesMs[clamp(low, 0, onsetTimesMs.length - 1)]]
+  if (low - 1 >= 0) candidates.push(onsetTimesMs[low - 1])
+  let best = timeMs
+  let bestDelta = maxOffsetMs + 1
+  for (const candidate of candidates) {
+    const delta = Math.abs(candidate - timeMs)
+    if (delta < bestDelta) {
+      bestDelta = delta
+      best = candidate
+    }
+  }
+  return bestDelta <= maxOffsetMs ? best : timeMs
+}
+
+function rhythmProfile(difficulty: Difficulty) {
+  if (difficulty === "easy") return { subdivision: 1, onBeatChance: 0.95, offBeatChance: 0.0, snapMs: 110, maxNotes: 190 }
+  if (difficulty === "normal") return { subdivision: 1, onBeatChance: 0.97, offBeatChance: 0.26, snapMs: 96, maxNotes: 330 }
+  if (difficulty === "hard") return { subdivision: 0.5, onBeatChance: 0.98, offBeatChance: 0.58, snapMs: 86, maxNotes: 520 }
+  if (difficulty === "extreme") return { subdivision: 0.5, onBeatChance: 0.99, offBeatChance: 0.8, snapMs: 76, maxNotes: 760 }
+  return { subdivision: 0.25, onBeatChance: 1, offBeatChance: 0.94, snapMs: 68, maxNotes: 980 }
+}
+
+function generateBeatmap(
+  trackId: 1 | 2 | 3,
+  difficulty: Difficulty,
+  durationMs: number,
+  analysis: TrackTimingAnalysis,
+): BeatObject[] {
   const settings = DIFFICULTY[difficulty]
-  const [minGap, maxGap] = settings.spacing
+  const profile = rhythmProfile(difficulty)
   const tailBufferMs = SLIDER_TAIL_BUFFER_MS[difficulty]
   const difficultySeed = { easy: 11, normal: 29, hard: 53, extreme: 79, legend: 101 }[difficulty]
   const rng = createRng(trackId * 937 + difficultySeed)
   const notes: BeatObject[] = []
 
-  let tMs = FIRST_NOTE_DELAY_MS
   const finishMs = Math.max(FIRST_NOTE_DELAY_MS + 2000, durationMs - 1300)
+  const beatPeriodMs = clamp(analysis.beatPeriodMs, 300, 900)
+  const stepMs = beatPeriodMs * profile.subdivision
+  const restMarginBeforeMs = settings.approachMs * 0.68
+  const restMarginAfterMs = Math.max(settings.hit50 + 90, stepMs * 0.52)
+  let tMs = Math.max(FIRST_NOTE_DELAY_MS, analysis.firstBeatMs)
+  let nextAllowedMs = tMs
   let prevX = 0.5
   let prevY = 0.5
 
-  while (tMs < finishMs) {
-    let requiredGapMs = 0
+  while (tMs < finishMs && notes.length < profile.maxNotes) {
+    if (tMs < nextAllowedMs) {
+      tMs += stepMs
+      continue
+    }
+    if (isInsideRestIntervalWithMargin(tMs, analysis.restIntervals, restMarginBeforeMs, restMarginAfterMs)) {
+      tMs += stepMs
+      continue
+    }
+
+    const beatPosition = (tMs - analysis.firstBeatMs) / beatPeriodMs
+    const beatFraction = Math.abs(beatPosition - Math.round(beatPosition))
+    const onBeat = beatFraction <= 0.08
+    const spawnChance = onBeat ? profile.onBeatChance : profile.offBeatChance
+    if (rng() > spawnChance) {
+      tMs += stepMs
+      continue
+    }
+
+    const snappedTime = snapToNearestOnset(tMs, analysis.onsetTimesMs, profile.snapMs)
+    if (snappedTime < nextAllowedMs || snappedTime < FIRST_NOTE_DELAY_MS || snappedTime > finishMs) {
+      tMs += stepMs
+      continue
+    }
+    if (isInsideRestIntervalWithMargin(snappedTime, analysis.restIntervals, restMarginBeforeMs, restMarginAfterMs)) {
+      tMs += stepMs
+      continue
+    }
+
     let nextX = 0.12 + rng() * 0.76
     let nextY = 0.12 + rng() * 0.76
     let guard = 0
@@ -311,7 +656,21 @@ function generateBeatmap(trackId: 1 | 2 | 3, difficulty: Difficulty, durationMs:
       guard += 1
     }
 
-    const makeSlider = rng() < settings.sliderChance
+    let makeSlider = rng() < settings.sliderChance * (onBeat ? 1.06 : 0.74)
+    let sliderDuration = 0
+    if (makeSlider) {
+      const rawSliderDuration =
+        settings.sliderDurationMs[0] + rng() * (settings.sliderDurationMs[1] - settings.sliderDurationMs[0])
+      const quantized = Math.round(rawSliderDuration / beatPeriodMs) * beatPeriodMs
+      sliderDuration = clamp(quantized, settings.sliderDurationMs[0], settings.sliderDurationMs[1])
+      if (snappedTime + sliderDuration > finishMs - 120) {
+        makeSlider = false
+      }
+      if (isInsideRestIntervalWithMargin(snappedTime + sliderDuration, analysis.restIntervals, restMarginBeforeMs, restMarginAfterMs)) {
+        makeSlider = false
+      }
+    }
+
     if (makeSlider) {
       const pointsCount = rng() < 0.62 ? 2 : rng() < 0.86 ? 3 : 4
       const points: Array<{ x: number; y: number }> = [{ x: nextX, y: nextY }]
@@ -325,31 +684,27 @@ function generateBeatmap(trackId: 1 | 2 | 3, difficulty: Difficulty, durationMs:
         points.push({ x: anchorX, y: anchorY })
       }
 
-      const sliderDuration =
-        settings.sliderDurationMs[0] + rng() * (settings.sliderDurationMs[1] - settings.sliderDurationMs[0])
       notes.push({
         kind: "slider",
-        tMs: Math.round(tMs),
+        tMs: Math.round(snappedTime),
         points,
         durationMs: Math.round(sliderDuration),
       })
-      // Next note should not become hittable until slider travel is finished.
-      requiredGapMs = sliderDuration + settings.hit50 + tailBufferMs
+      nextAllowedMs = snappedTime + sliderDuration + settings.hit50 + tailBufferMs
     } else {
       notes.push({
         kind: "circle",
-        tMs: Math.round(tMs),
+        tMs: Math.round(snappedTime),
         x: nextX,
         y: nextY,
       })
+      nextAllowedMs = snappedTime + Math.max(stepMs * 0.82, 92)
     }
 
     const lastPoint = pullPoint(notes[notes.length - 1])
     prevX = lastPoint.x
     prevY = lastPoint.y
-    const baseGap = minGap + rng() * (maxGap - minGap)
-    const gap = Math.max(baseGap, requiredGapMs)
-    tMs += gap
+    tMs += stepMs
   }
 
   return notes
@@ -781,6 +1136,7 @@ export default function OsuLikePage() {
         const loadedTracks: TrackAsset[] = []
         const loadedBytesByTrack = new Array<number>(TRACKS.length).fill(0)
         const totalBytesByTrack = new Array<number>(TRACKS.length).fill(0)
+        let analyzedTracksCount = 0
         const headSizes = await Promise.all(
           TRACKS.map(async (track) => {
             try {
@@ -799,7 +1155,8 @@ export default function OsuLikePage() {
           const loadedBytes = loadedBytesByTrack.reduce((sum, value) => sum + value, 0)
           const totalBytes = totalBytesByTrack.reduce((sum, value) => sum + value, 0)
           const audioRatio = totalBytes > 0 ? clamp(loadedBytes / totalBytes, 0, 1) : 0
-          const ratio = clamp(audioRatio * 0.92 + backgroundRatio * 0.08, 0, 1)
+          const analysisRatio = TRACKS.length > 0 ? analyzedTracksCount / TRACKS.length : 0
+          const ratio = clamp(audioRatio * 0.68 + analysisRatio * 0.24 + backgroundRatio * 0.08, 0, 1)
           setLoadingProgress(Math.round(ratio * 100))
         }
 
@@ -821,12 +1178,17 @@ export default function OsuLikePage() {
 
           setLoadingText(`Decoding ${track.title}...`)
           const decoded = await context.decodeAudioData(fileBuffer.slice(0))
+          setLoadingText(`Analyzing rhythm of ${track.title}...`)
+          const analysis = await analyzeTrackTiming(decoded)
+          analyzedTracksCount += 1
+          pushProgress()
           loadedTracks.push({
             id: track.id,
             title: track.title,
             src: track.src,
             durationMs: decoded.duration * 1000,
             buffer: decoded,
+            analysis,
           })
         }
 
@@ -948,6 +1310,27 @@ export default function OsuLikePage() {
       })
       .filter((value): value is NonNullable<typeof value> => value !== null)
   }, [fieldSize.height, fieldSize.width, phase, reduceMotion, renderNowMs])
+
+  const activeRestInterval = useMemo(() => {
+    const session = gameSessionRef.current
+    if (!session || (phase !== "playing" && phase !== "paused")) return null
+
+    const track = trackAssets.find((asset) => asset.id === session.trackId)
+    if (!track) return null
+
+    const nowMs = phase === "paused" ? session.pausedOffsetMs : renderNowMs
+    const interval = track.analysis.restIntervals.find((candidate) => nowMs >= candidate.startMs && nowMs <= candidate.endMs)
+    if (!interval) return null
+
+    const durationMs = Math.max(1, interval.endMs - interval.startMs)
+    const progress = clamp((nowMs - interval.startMs) / durationMs, 0, 1)
+    return {
+      startMs: interval.startMs,
+      endMs: interval.endMs,
+      progress,
+      thumbProgress: clamp(progress, 0.02, 0.98),
+    }
+  }, [phase, renderNowMs, trackAssets])
 
   const updateHud = useCallback((session: GameSession) => {
     setHud({
@@ -1297,7 +1680,7 @@ export default function OsuLikePage() {
       await context.resume()
     }
 
-    const beatmap = generateBeatmap(selectedTrack.id, selectedDifficulty, selectedTrack.durationMs)
+    const beatmap = generateBeatmap(selectedTrack.id, selectedDifficulty, selectedTrack.durationMs, selectedTrack.analysis)
     const runtimeNotes: RuntimeNote[] = beatmap.map((note, index) => ({
       ...note,
       index,
@@ -2010,6 +2393,38 @@ export default function OsuLikePage() {
                 <p className="text-xs tracking-[0.12em] uppercase">Accuracy</p>
                 <p className="mt-1 text-lg font-semibold leading-none">{hud.accuracy.toFixed(2)}%</p>
               </div>
+
+              {activeRestInterval && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-8 z-30 flex justify-center px-4">
+                  <div className="relative w-[min(78vw,960px)]">
+                    <div className="absolute -left-16 top-1/2 -translate-y-1/2 text-[54px] leading-none text-white/70 drop-shadow-[0_0_14px_rgba(255,255,255,0.7)]">
+                      ‹
+                    </div>
+                    <div className="absolute -right-16 top-1/2 -translate-y-1/2 text-[54px] leading-none text-white/70 drop-shadow-[0_0_14px_rgba(255,255,255,0.7)]">
+                      ›
+                    </div>
+
+                    <div className="h-3 overflow-hidden rounded-full border border-white/55 bg-white/18 shadow-[0_0_30px_rgba(255,255,255,0.2)] backdrop-blur-[1px]">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#cef4ff] via-[#ffffff] to-[#ffd4ea]"
+                        style={{
+                          width: `${activeRestInterval.progress * 100}%`,
+                          boxShadow: "0 0 20px rgba(255,255,255,0.55)",
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      className="absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full border border-white/90 bg-[#fff7fc] shadow-[0_0_16px_rgba(255,255,255,0.95)]"
+                      style={{
+                        left: `calc(${activeRestInterval.thumbProgress * 100}% - 12px)`,
+                      }}
+                    >
+                      <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff7db5]" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {countdownLabel && (
                 <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
