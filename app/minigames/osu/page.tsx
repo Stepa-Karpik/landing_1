@@ -206,6 +206,36 @@ const SLIDER_TAIL_BUFFER_MS: Record<Difficulty, number> = {
 }
 
 const CIRCLE_COLORS = ["#ff5f87", "#6fa8ff", "#78d8a6", "#f6b26b", "#c993ff"] as const
+const DIFFICULTY_THEME: Record<
+  Difficulty,
+  { gradient: string; text: string; badge: string }
+> = {
+  easy: {
+    gradient: "linear-gradient(90deg, rgba(117,246,190,0.96) 0%, rgba(86,222,185,0.96) 100%)",
+    text: "#08362a",
+    badge: "#0f6f57",
+  },
+  normal: {
+    gradient: "linear-gradient(90deg, rgba(117,210,255,0.96) 0%, rgba(89,169,255,0.96) 100%)",
+    text: "#072b4d",
+    badge: "#1a5696",
+  },
+  hard: {
+    gradient: "linear-gradient(90deg, rgba(255,224,128,0.96) 0%, rgba(255,170,116,0.96) 100%)",
+    text: "#432a07",
+    badge: "#92541a",
+  },
+  extreme: {
+    gradient: "linear-gradient(90deg, rgba(255,132,158,0.96) 0%, rgba(255,98,148,0.96) 100%)",
+    text: "#4f1023",
+    badge: "#9a2f4d",
+  },
+  legend: {
+    gradient: "linear-gradient(90deg, rgba(205,130,255,0.96) 0%, rgba(175,111,246,0.96) 100%)",
+    text: "#2c114a",
+    badge: "#6b35a2",
+  },
+}
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
 
@@ -458,11 +488,54 @@ async function urlExists(url: string) {
   }
 }
 
+async function fetchArrayBufferWithProgress(
+  url: string,
+  onProgress: (loaded: number, total: number) => void,
+) {
+  const response = await fetch(url, { cache: "no-store" })
+  if (!response.ok) {
+    throw new Error("Assets not found in /osu")
+  }
+
+  const totalFromHeader = Number(response.headers.get("content-length") ?? "0")
+  const reader = response.body?.getReader()
+
+  if (!reader) {
+    const fallbackBuffer = await response.arrayBuffer()
+    const fallbackTotal = totalFromHeader > 0 ? totalFromHeader : fallbackBuffer.byteLength
+    onProgress(fallbackBuffer.byteLength, fallbackTotal)
+    return fallbackBuffer
+  }
+
+  const chunks: Uint8Array[] = []
+  let loaded = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (!value) continue
+    chunks.push(value)
+    loaded += value.byteLength
+    onProgress(loaded, totalFromHeader)
+  }
+
+  const merged = new Uint8Array(loaded)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+
+  const total = totalFromHeader > 0 ? totalFromHeader : loaded
+  onProgress(loaded, total)
+  return merged.buffer
+}
+
 export default function OsuLikePage() {
   const { recordGameResult } = useProfileTracker()
 
   const [phase, setPhase] = useState<Phase>("loading")
   const [loadingText, setLoadingText] = useState("Loading assets...")
+  const [loadingProgress, setLoadingProgress] = useState(0)
   const [errorText, setErrorText] = useState("")
 
   const [trackAssets, setTrackAssets] = useState<TrackAsset[]>([])
@@ -529,6 +602,13 @@ export default function OsuLikePage() {
     () => backgroundAssets.find((asset) => asset.id === selectedTrackId) ?? null,
     [backgroundAssets, selectedTrackId],
   )
+  const backgroundByTrackId = useMemo(() => {
+    const map = new Map<1 | 2 | 3, BackgroundAsset>()
+    for (const background of backgroundAssets) {
+      map.set(background.id, background)
+    }
+    return map
+  }, [backgroundAssets])
   const difficultyConfig = DIFFICULTY[selectedDifficulty]
 
   const ensureAudioGraph = useCallback(async () => {
@@ -695,18 +775,51 @@ export default function OsuLikePage() {
     const load = async () => {
       try {
         setLoadingText("Preparing audio engine...")
+        setLoadingProgress(2)
         const context = await ensureAudioGraph()
 
         const loadedTracks: TrackAsset[] = []
-        let loadedCount = 0
+        const loadedBytesByTrack = new Array<number>(TRACKS.length).fill(0)
+        const totalBytesByTrack = new Array<number>(TRACKS.length).fill(0)
+        const headSizes = await Promise.all(
+          TRACKS.map(async (track) => {
+            try {
+              const response = await fetch(track.src, { method: "HEAD", cache: "no-store" })
+              return Number(response.headers.get("content-length") ?? "0")
+            } catch {
+              return 0
+            }
+          }),
+        )
+        for (let index = 0; index < headSizes.length; index += 1) {
+          totalBytesByTrack[index] = headSizes[index]
+        }
+        const pushProgress = (backgroundRatio = 0) => {
+          if (cancelled) return
+          const loadedBytes = loadedBytesByTrack.reduce((sum, value) => sum + value, 0)
+          const totalBytes = totalBytesByTrack.reduce((sum, value) => sum + value, 0)
+          const audioRatio = totalBytes > 0 ? clamp(loadedBytes / totalBytes, 0, 1) : 0
+          const ratio = clamp(audioRatio * 0.92 + backgroundRatio * 0.08, 0, 1)
+          setLoadingProgress(Math.round(ratio * 100))
+        }
 
-        for (const track of TRACKS) {
+        for (let index = 0; index < TRACKS.length; index += 1) {
+          const track = TRACKS[index]
           setLoadingText(`Loading ${track.title}...`)
-          const response = await fetch(track.src, { cache: "no-store" })
-          if (!response.ok) {
-            throw new Error("Assets not found in /osu")
+          const fileBuffer = await fetchArrayBufferWithProgress(track.src, (loaded, total) => {
+            if (total > 0) {
+              totalBytesByTrack[index] = total
+            }
+            loadedBytesByTrack[index] = loaded
+            pushProgress()
+          })
+          loadedBytesByTrack[index] = fileBuffer.byteLength
+          if (totalBytesByTrack[index] <= 0) {
+            totalBytesByTrack[index] = fileBuffer.byteLength
           }
-          const fileBuffer = await response.arrayBuffer()
+          pushProgress()
+
+          setLoadingText(`Decoding ${track.title}...`)
           const decoded = await context.decodeAudioData(fileBuffer.slice(0))
           loadedTracks.push({
             id: track.id,
@@ -715,15 +828,16 @@ export default function OsuLikePage() {
             durationMs: decoded.duration * 1000,
             buffer: decoded,
           })
-          loadedCount += 1
-          setLoadingText(`Loading audio ${loadedCount}/3...`)
         }
 
         const loadedBackgrounds: BackgroundAsset[] = []
-        for (const id of [1, 2, 3] as const) {
+        for (let index = 0; index < [1, 2, 3].length; index += 1) {
+          const id = [1, 2, 3][index] as 1 | 2 | 3
+          setLoadingText(`Loading background ${index + 1}/3...`)
           const videoPath = `/osu/osu_video${id}.mp4`
           if (await urlExists(videoPath)) {
             loadedBackgrounds.push({ id, kind: "video", src: videoPath })
+            pushProgress((index + 1) / 3)
             continue
           }
 
@@ -739,9 +853,12 @@ export default function OsuLikePage() {
             throw new Error("Assets not found in /osu")
           }
           loadedBackgrounds.push({ id, kind: "image", src: photoPath })
+          pushProgress((index + 1) / 3)
         }
 
         if (cancelled) return
+        setLoadingText("Finalizing...")
+        setLoadingProgress(100)
         setTrackAssets(loadedTracks)
         setBackgroundAssets(loadedBackgrounds)
         setPhase("menu")
@@ -1565,13 +1682,30 @@ export default function OsuLikePage() {
 
   const difficultyLabel = difficultyConfig ? selectedDifficulty.toUpperCase() : "EASY"
   const bestForCurrent = bestScores[bestKey(selectedTrackId, selectedDifficulty)] ?? 0
+  const menuBackgroundStyle =
+    phase === "menu"
+      ? { background: "linear-gradient(145deg, #d9f6ec 0%, #f7dcec 68%, #fbe5ef 100%)" }
+      : undefined
 
   return (
-    <main className="min-h-screen bg-[#f6f4ef] px-4 pb-8 pt-20 text-[#111111] md:px-8">
+    <main className="min-h-screen px-4 pb-8 pt-20 text-[#111111] md:px-8" style={menuBackgroundStyle}>
       <div className="mx-auto max-w-[1400px]">
         {phase === "loading" && (
-          <section className="rounded-xl border border-black/14 bg-white/45 p-6">
-            <p className="text-sm tracking-[0.08em] text-black/70 uppercase">{loadingText}</p>
+          <section className="flex min-h-[72vh] items-center justify-center">
+            <div className="w-full max-w-xl rounded-2xl border border-[#ce9fb6]/50 bg-[#fff2f8]/72 p-6 shadow-[0_22px_80px_rgba(97,35,64,0.16)] backdrop-blur">
+              <p className="text-[11px] tracking-[0.14em] text-[#6f5361] uppercase">Loading OSU Assets</p>
+              <p className="mt-2 text-sm text-[#5f4653]">{loadingText}</p>
+              <div className="mt-4 h-4 overflow-hidden rounded-full border border-[#d39ebb]/60 bg-white/65">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,#8deacc_0%,#74d8e8_32%,#a08ef8_64%,#ff9cc3_100%)] transition-[width] duration-200"
+                  style={{ width: `${clamp(loadingProgress, 0, 100)}%` }}
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-[#6e5162]">
+                <span>{Math.round(clamp(loadingProgress, 0, 100))}%</span>
+                <span>{loadingProgress < 100 ? "Please wait..." : "Ready"}</span>
+              </div>
+            </div>
           </section>
         )}
 
@@ -1586,59 +1720,109 @@ export default function OsuLikePage() {
         )}
 
         {phase === "menu" && (
-          <section className="relative overflow-hidden rounded-2xl border border-black/14 bg-white/40 p-4 md:p-5">
-            {selectedBackground?.kind === "video" && (
-              <video src={selectedBackground.src} className="absolute inset-0 h-full w-full object-cover" muted loop autoPlay playsInline />
-            )}
-            {selectedBackground?.kind === "image" && (
-              <img src={selectedBackground.src} alt={`Track ${selectedTrackId}`} className="absolute inset-0 h-full w-full object-cover" />
-            )}
-            <div className="absolute inset-0 bg-[#190a18]/45 backdrop-blur-[1px]" />
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[220px] flex-1">
+                <label className="flex items-center justify-between text-[11px] tracking-[0.12em] text-[#355047] uppercase">
+                  <span>Volume</span>
+                  <span>{volume}</span>
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={volume}
+                  onChange={(event) => setVolume(Number(event.target.value))}
+                  className="mt-2 w-full accent-[#ff6ea5]"
+                />
+              </div>
 
-            <div className="relative z-10 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="space-y-2">
-                <p className="text-[11px] tracking-[0.16em] text-white/70 uppercase">Song wheel</p>
-                {trackAssets.map((track) => {
-                  const expanded = hoveredTrackId === track.id || selectedTrackId === track.id
-                  const selected = selectedTrackId === track.id
-                  return (
+              <button
+                type="button"
+                onClick={togglePreview}
+                className="rounded-lg border border-[#7aa39a]/45 bg-white/62 px-4 py-2 text-xs tracking-[0.12em] text-[#2d4740] uppercase transition-colors hover:bg-white"
+              >
+                {isPreviewPlaying ? "Stop preview" : "Preview"}
+              </button>
+
+              <button
+                type="button"
+                onClick={beginArming}
+                className="rounded-lg border border-[#c66693]/50 bg-[#ff6fa3] px-4 py-2 text-xs tracking-[0.12em] text-white uppercase transition-opacity hover:opacity-90"
+              >
+                Start
+              </button>
+            </div>
+
+            <p className="text-[11px] tracking-[0.12em] text-[#5a726a] uppercase">
+              Selected: {selectedTrack?.title ?? "Track"} / {difficultyLabel} / best {bestForCurrent}
+            </p>
+
+            <div className="space-y-3">
+              {trackAssets.map((track) => {
+                const expanded = hoveredTrackId === track.id || selectedTrackId === track.id
+                const selected = selectedTrackId === track.id
+                const trackBackground = backgroundByTrackId.get(track.id) ?? null
+                return (
+                  <article
+                    key={track.id}
+                    onMouseEnter={() => setHoveredTrackId(track.id)}
+                    onMouseLeave={() => setHoveredTrackId(null)}
+                    className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
+                      selected
+                        ? "border-[#e08aad]/70 bg-[#2f2742] text-white shadow-[0_14px_35px_rgba(58,17,37,0.3)]"
+                        : "border-[#7ea79f]/45 bg-[#33485a] text-white/95"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (track.id !== selectedTrackId && isPreviewPlaying) {
+                          stopPreview()
+                        }
+                        setSelectedTrackId(track.id)
+                      }}
+                      className="w-full px-3 py-3 text-left"
+                    >
+                      <div className="flex items-stretch gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`h-2.5 w-2.5 rounded-full ${selected ? "bg-[#ff8bbb]" : "bg-[#8be5c7]"}`} />
+                            <p className="truncate text-[clamp(20px,2.6vw,34px)] font-semibold leading-none tracking-[-0.02em]">
+                              {track.title}
+                            </p>
+                          </div>
+                          <p className="mt-1 text-sm text-white/82">{formatTime(track.durationMs)}</p>
+                          <p className="mt-1 text-[11px] tracking-[0.12em] text-white/75 uppercase">
+                            {selected ? "Selected mapset" : "Mapset"} - {DIFFICULTY[selectedDifficulty].star}*
+                          </p>
+                        </div>
+
+                        <div className="relative hidden h-24 w-44 shrink-0 overflow-hidden rounded-xl border border-white/35 bg-black/25 sm:block">
+                          {trackBackground?.kind === "video" && (
+                            <video src={trackBackground.src} className="h-full w-full object-cover" muted loop autoPlay playsInline />
+                          )}
+                          {trackBackground?.kind === "image" && (
+                            <img src={trackBackground.src} alt={`${track.title} cover`} className="h-full w-full object-cover" />
+                          )}
+                          {!trackBackground && <div className="h-full w-full bg-[#283f43]" />}
+                          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(130deg,rgba(9,7,14,0.1)_0%,rgba(9,7,14,0.44)_100%)]" />
+                        </div>
+                      </div>
+                    </button>
+
                     <div
-                      key={track.id}
-                      onMouseEnter={() => setHoveredTrackId(track.id)}
-                      onMouseLeave={() => setHoveredTrackId(null)}
-                      className={`overflow-hidden rounded-xl border transition-all duration-300 ${
-                        expanded
-                          ? "border-white/45 bg-[#ffe7f2]/28 shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
-                          : "border-white/20 bg-black/25"
+                      className={`overflow-hidden transition-[max-height,opacity,margin] duration-300 ${
+                        expanded ? "max-h-[360px] opacity-100" : "max-h-0 opacity-0"
                       }`}
                     >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (track.id !== selectedTrackId && isPreviewPlaying) {
-                            stopPreview()
-                          }
-                          setSelectedTrackId(track.id)
-                        }}
-                        className="flex w-full items-center justify-between px-4 py-3 text-left"
-                      >
-                        <div>
-                          <p className="text-base font-medium text-white">{track.title}</p>
-                          <p className="text-[11px] text-white/70">{formatTime(track.durationMs)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[11px] tracking-[0.14em] text-white/70 uppercase">{selected ? "Selected" : "Track"}</p>
-                          <p className="text-sm text-[#ffd4e8]">{"*".repeat(DIFFICULTY[selectedDifficulty].star)}</p>
-                        </div>
-                      </button>
-
-                      <div
-                        className={`grid overflow-hidden px-3 transition-[max-height,opacity,margin] duration-300 ${
-                          expanded ? "mt-1 max-h-52 opacity-100 pb-3" : "mt-0 max-h-0 opacity-0 pb-0"
-                        }`}
-                      >
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          {DIFFICULTY_ORDER.map((difficulty) => (
+                      <div className="space-y-2 px-3 pb-3">
+                        {DIFFICULTY_ORDER.map((difficulty) => {
+                          const active = selectedTrackId === track.id && selectedDifficulty === difficulty
+                          const theme = DIFFICULTY_THEME[difficulty]
+                          const stars = "*".repeat(DIFFICULTY[difficulty].star)
+                          const bestForDifficulty = bestScores[bestKey(track.id, difficulty)] ?? 0
+                          return (
                             <button
                               key={`${track.id}-${difficulty}`}
                               type="button"
@@ -1649,62 +1833,27 @@ export default function OsuLikePage() {
                                 setSelectedTrackId(track.id)
                                 setSelectedDifficulty(difficulty)
                               }}
-                              className={`rounded-md border px-2 py-1.5 text-[11px] tracking-[0.1em] uppercase transition-colors ${
-                                selectedTrackId === track.id && selectedDifficulty === difficulty
-                                  ? "border-white/55 bg-white/18 text-white"
-                                  : "border-white/25 bg-black/20 text-white/85 hover:bg-black/35"
-                              }`}
+                              className="flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left transition-transform hover:scale-[1.01]"
+                              style={{
+                                background: theme.gradient,
+                                color: theme.text,
+                                borderColor: active ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.38)",
+                                boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.86), 0 8px 20px rgba(0,0,0,0.2)" : "none",
+                              }}
                             >
-                              {difficulty}
+                              <span className="inline-flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: theme.badge }} />
+                                <span className="text-sm font-semibold tracking-[0.02em] uppercase">{difficulty}</span>
+                              </span>
+                              <span className="text-[11px] font-medium">{stars} - Best {bestForDifficulty}</span>
                             </button>
-                          ))}
-                        </div>
+                          )
+                        })}
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-
-              <aside className="space-y-4 rounded-xl border border-white/30 bg-[#ffe7f2]/28 p-4 text-white backdrop-blur-md">
-                <div className="rounded-md border border-white/30 bg-black/18 p-3 text-xs">
-                  <p className="text-[10px] tracking-[0.12em] text-white/70 uppercase">Selected</p>
-                  <p className="mt-1 text-sm font-medium">{selectedTrack?.title ?? "Track"}</p>
-                  <p className="mt-1 text-white/80">Difficulty: {difficultyLabel}</p>
-                  <p className="mt-1 text-white/80">Best score: {bestForCurrent}</p>
-                  <p className="mt-1 text-white/80">First note: +{Math.round(FIRST_NOTE_DELAY_MS / 1000)}s after GO</p>
-                </div>
-
-                <div>
-                  <label className="flex items-center justify-between text-[11px] tracking-[0.12em] text-white/80 uppercase">
-                    <span>Volume</span>
-                    <span>{volume}</span>
-                  </label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={volume}
-                    onChange={(event) => setVolume(Number(event.target.value))}
-                    className="mt-2 w-full accent-[#ff6ea5]"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={togglePreview}
-                  className="w-full rounded-md border border-white/35 bg-white/18 px-3 py-2 text-xs tracking-[0.12em] uppercase transition-colors hover:bg-white/25"
-                >
-                  {isPreviewPlaying ? "Stop preview" : "Preview"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={beginArming}
-                  className="w-full rounded-md border border-white/35 bg-[#ff6fa3] px-3 py-2 text-xs tracking-[0.12em] text-white uppercase transition-opacity hover:opacity-90"
-                >
-                  Start
-                </button>
-              </aside>
+                  </article>
+                )
+              })}
             </div>
           </section>
         )}
