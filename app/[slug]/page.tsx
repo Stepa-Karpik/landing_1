@@ -11,7 +11,7 @@ interface RoutePageProps {
   params: Params
 }
 
-const STATIC_ROUTE_SLUGS = new Set(["craft"])
+const STATIC_ROUTE_SLUGS = new Set(["craft", "projects"])
 const routeAtmosphere: Record<string, AtmosphereBlob[]> = {
   hero: [
     { id: "hero-pink", color: "#c89ad8", size: "clamp(760px,72vw,1180px)", top: "4%", left: "54%", maxShift: 100 },
