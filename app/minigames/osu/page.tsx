@@ -1667,6 +1667,7 @@ export default function OsuLikePage() {
         bestScore: nextBest,
         failed: forcedFail,
       }
+      const perfectRun = !forcedFail && session.count100 === 0 && session.count50 === 0 && session.countMiss === 0
 
       setBestScores((previous) => {
         const updated = { ...previous, [storageKey]: nextBest }
@@ -1686,13 +1687,15 @@ export default function OsuLikePage() {
         accuracy,
         maxCombo: session.maxCombo,
         cleared: !forcedFail,
+        perfect: perfectRun,
+        availableTracks: trackAssets.length,
       })
 
       setResult(resultPayload)
       phaseRef.current = "results"
       setPhase("results")
     },
-    [bestScores, cancelRaf, recordGameResult, stopGameAudio],
+    [bestScores, cancelRaf, recordGameResult, stopGameAudio, trackAssets.length],
   )
 
   const judgeNote = useCallback(

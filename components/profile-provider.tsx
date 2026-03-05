@@ -15,7 +15,6 @@ import {
 
 type Rarity = "common" | "rare" | "epic" | "legendary" | "impossible"
 type GameId = "tetris" | "dino" | "minesweeper" | "match3" | "snake" | "game2048" | "breakout" | "simon" | "osu"
-type OsuTrackId = 1 | 2 | 3
 type OsuDifficulty = "easy" | "normal" | "hard" | "extreme" | "legend"
 
 interface GameStatsEntry {
@@ -28,10 +27,13 @@ interface GameStatsEntry {
 
 interface OsuProgress {
   clears: number
+  perfectClears: number
   legendClears: number
-  clearedTracks: OsuTrackId[]
+  knownTracks: number
+  seenTracks: number[]
+  clearedTracks: number[]
+  perfectTracks: number[]
   clearedDifficulties: OsuDifficulty[]
-  clearedCombinations: string[]
   bestAccuracy: number
   bestCombo: number
 }
@@ -92,10 +94,17 @@ interface GameResultPayload {
   accuracy?: number
   maxCombo?: number
   cleared?: boolean
+  perfect?: boolean
+  availableTracks?: number
 }
 
 interface ProfileContextValue {
   data: ProfileData
+  siteProgressPercent: number
+  achievementsProgressPercent: number
+  unlockedCount: number
+  achievementViews: AchievementView[]
+  sortedAchievementViews: AchievementView[]
   recordGameResult: (gameId: GameId, payload: GameResultPayload) => void
 }
 
@@ -117,7 +126,6 @@ const GAME_ROUTES = [
   "/minigames/osu",
 ] as const
 const SITE_ROUTES = [...MAIN_ROUTES, ...GAME_ROUTES] as const
-const OSU_TRACK_IDS: readonly OsuTrackId[] = [1, 2, 3]
 const OSU_DIFFICULTIES: readonly OsuDifficulty[] = ["easy", "normal", "hard", "extreme", "legend"]
 
 const miniGames: ReadonlyArray<{ id: GameId; label: string; href: (typeof GAME_ROUTES)[number]; goal: string }> = [
@@ -141,10 +149,10 @@ const rarityStyles: Record<Rarity, { badge: string; accent: string }> = {
 }
 
 const rarityLabels: Record<Rarity, string> = {
-  common: "common",
-  rare: "rare",
-  epic: "epic",
-  legendary: "legendary",
+  common: "\u041e\u0431\u044b\u0447\u043d\u043e\u0435",
+  rare: "\u0420\u0435\u0434\u043a\u043e\u0435",
+  epic: "\u042d\u043f\u0438\u0447\u0435\u0441\u043a\u043e\u0435",
+  legendary: "\u041b\u0435\u0433\u0435\u043d\u0434\u0430\u0440\u043d\u043e\u0435",
   impossible: "невозможно",
 }
 
@@ -166,10 +174,13 @@ const defaultGameEntry: GameStatsEntry = {
 
 const defaultOsuProgress: OsuProgress = {
   clears: 0,
+  perfectClears: 0,
   legendClears: 0,
+  knownTracks: 0,
+  seenTracks: [],
   clearedTracks: [],
+  perfectTracks: [],
   clearedDifficulties: [],
-  clearedCombinations: [],
   bestAccuracy: 0,
   bestCombo: 0,
 }
@@ -279,20 +290,34 @@ function sanitizeProfileData(raw: unknown): ProfileData {
         : Math.max(0, Number(entry.bestTimeMs) || 0),
   })
 
-  const normalizedTracks = Array.isArray(osuProgressRaw.clearedTracks)
-    ? osuProgressRaw.clearedTracks
-        .map((value) => Number(value))
-        .filter((value): value is OsuTrackId => value === 1 || value === 2 || value === 3)
-    : []
+  const normalizeTrackIds = (values: unknown): number[] =>
+    Array.isArray(values)
+      ? values
+          .map((value) => Number(value))
+          .filter((value): value is number => Number.isInteger(value) && value > 0)
+      : []
+  const normalizedTracks = normalizeTrackIds(osuProgressRaw.clearedTracks)
+  const normalizedSeenTracks = normalizeTrackIds((osuProgressRaw as { seenTracks?: unknown }).seenTracks)
+  const normalizedPerfectTracks = normalizeTrackIds((osuProgressRaw as { perfectTracks?: unknown }).perfectTracks)
   const normalizedDifficulties = Array.isArray(osuProgressRaw.clearedDifficulties)
     ? osuProgressRaw.clearedDifficulties.filter(
         (value): value is OsuDifficulty =>
           typeof value === "string" && (OSU_DIFFICULTIES as readonly string[]).includes(value),
       )
     : []
-  const normalizedCombinations = Array.isArray(osuProgressRaw.clearedCombinations)
-    ? osuProgressRaw.clearedCombinations.filter((value): value is string => typeof value === "string")
-    : []
+  const rawKnownTracks = Number((osuProgressRaw as { knownTracks?: unknown }).knownTracks ?? 0)
+  const hasLegacyOsuProgress =
+    normalizedTracks.length > 0 ||
+    Number(osuProgressRaw.clears ?? 0) > 0 ||
+    Number((gameStatsRaw.osu?.plays ?? 0) || 0) > 0
+  const knownTracksFloor = hasLegacyOsuProgress ? 3 : 0
+  const knownTracks = Math.max(
+    knownTracksFloor,
+    Number.isFinite(rawKnownTracks) ? Math.max(0, Math.round(rawKnownTracks)) : 0,
+    normalizedSeenTracks.length,
+    normalizedTracks.length,
+    normalizedPerfectTracks.length,
+  )
 
   return {
     version: 1,
@@ -340,10 +365,13 @@ function sanitizeProfileData(raw: unknown): ProfileData {
     },
     osuProgress: {
       clears: Math.max(0, Number(osuProgressRaw.clears ?? 0) || 0),
+      perfectClears: Math.max(0, Number((osuProgressRaw as { perfectClears?: unknown }).perfectClears ?? 0) || 0),
       legendClears: Math.max(0, Number(osuProgressRaw.legendClears ?? 0) || 0),
+      knownTracks,
+      seenTracks: Array.from(new Set(normalizedSeenTracks)),
       clearedTracks: Array.from(new Set(normalizedTracks)),
+      perfectTracks: Array.from(new Set(normalizedPerfectTracks)),
       clearedDifficulties: Array.from(new Set(normalizedDifficulties)),
-      clearedCombinations: Array.from(new Set(normalizedCombinations)),
       bestAccuracy: clamp(Number(osuProgressRaw.bestAccuracy ?? 0) || 0, 0, 100),
       bestCombo: Math.max(0, Number(osuProgressRaw.bestCombo ?? 0) || 0),
     },
@@ -599,71 +627,72 @@ const achievementDefinitions: AchievementDefinition[] = [
   },
   {
     id: "osu-120000",
-    title: "OSU-like: precise flow",
-    description: "Reach 120000 score in OSU-like mode.",
+    title: "\u041e\u0421\u0423-like: \u0442\u043e\u0447\u043d\u044b\u0439 \u0440\u0438\u0442\u043c",
+    description: "\u041d\u0430\u0431\u0440\u0430\u0442\u044c 120000 \u043e\u0447\u043a\u043e\u0432 \u0432 \u0440\u0435\u0436\u0438\u043c\u0435 OSU-like.",
     rarity: "legendary",
     getProgress: (data) => ({ value: data.gameStats.osu.bestScore, target: 120000 }),
   },
   {
     id: "osu-first-clear",
-    title: "OSU-like: first clear",
-    description: "Clear any OSU-like map once.",
+    title: "\u041f\u0440\u043e\u0439\u0442\u0438 \u043b\u044e\u0431\u0443\u044e \u043a\u0430\u0440\u0442\u0443",
+    description: "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u0445\u043e\u0442\u044f \u0431\u044b \u043e\u0434\u043d\u0443 \u043a\u0430\u0440\u0442\u0443 \u0432 OSU-like.",
     rarity: "common",
-    getProgress: (data) => ({ value: data.osuProgress.clears, target: 1 }),
-  },
-  {
-    id: "osu-track-1-clear",
-    title: "OSU-like: mapset I",
-    description: "Clear Track 1 on any difficulty.",
-    rarity: "common",
-    getProgress: (data) => ({ value: data.osuProgress.clearedTracks.includes(1) ? 1 : 0, target: 1 }),
-  },
-  {
-    id: "osu-track-2-clear",
-    title: "OSU-like: mapset II",
-    description: "Clear Track 2 on any difficulty.",
-    rarity: "rare",
-    getProgress: (data) => ({ value: data.osuProgress.clearedTracks.includes(2) ? 1 : 0, target: 1 }),
-  },
-  {
-    id: "osu-track-3-clear",
-    title: "OSU-like: mapset III",
-    description: "Clear Track 3 on any difficulty.",
-    rarity: "rare",
-    getProgress: (data) => ({ value: data.osuProgress.clearedTracks.includes(3) ? 1 : 0, target: 1 }),
+    getProgress: (data) => ({ value: data.osuProgress.clearedTracks.length, target: 1 }),
   },
   {
     id: "osu-all-tracks-clear",
-    title: "OSU-like: trilogy",
-    description: "Clear all three tracks.",
+    title: "\u041f\u0440\u043e\u0439\u0442\u0438 \u0432\u0441\u0435 \u043a\u0430\u0440\u0442\u044b",
+    description: "\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0432\u0441\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0435 \u043d\u0430 \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u043c\u043e\u043c\u0435\u043d\u0442 \u043a\u0430\u0440\u0442\u044b \u0432 OSU-like.",
     rarity: "epic",
-    getProgress: (data) => ({ value: data.osuProgress.clearedTracks.length, target: OSU_TRACK_IDS.length }),
+    getProgress: (data) => ({
+      value: data.osuProgress.clearedTracks.length,
+      target: Math.max(1, data.osuProgress.knownTracks),
+    }),
+    isUnlocked: (data) => data.osuProgress.knownTracks > 0 && data.osuProgress.clearedTracks.length >= data.osuProgress.knownTracks,
+  },
+  {
+    id: "osu-one-perfect-clear",
+    title: "\u041f\u0440\u043e\u0439\u0442\u0438 \u043e\u0434\u043d\u0443 \u043a\u0430\u0440\u0442\u0443 \u0438\u0434\u0435\u0430\u043b\u044c\u043d\u043e",
+    description: "\u041f\u0440\u043e\u0439\u0442\u0438 \u043b\u044e\u0431\u0443\u044e \u043a\u0430\u0440\u0442\u0443 \u0431\u0435\u0437 100/50/miss.",
+    rarity: "rare",
+    getProgress: (data) => ({ value: data.osuProgress.perfectTracks.length, target: 1 }),
+  },
+  {
+    id: "osu-all-perfect-clear",
+    title: "\u041f\u0440\u043e\u0439\u0442\u0438 \u0432\u0441\u0435 \u043a\u0430\u0440\u0442\u044b \u0438\u0434\u0435\u0430\u043b\u044c\u043d\u043e",
+    description: "\u041f\u0440\u043e\u0439\u0442\u0438 \u0438\u0434\u0435\u0430\u043b\u044c\u043d\u043e \u0432\u0441\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0435 \u043a\u0430\u0440\u0442\u044b \u0432 OSU-like.",
+    rarity: "legendary",
+    getProgress: (data) => ({
+      value: data.osuProgress.perfectTracks.length,
+      target: Math.max(1, data.osuProgress.knownTracks),
+    }),
+    isUnlocked: (data) => data.osuProgress.knownTracks > 0 && data.osuProgress.perfectTracks.length >= data.osuProgress.knownTracks,
   },
   {
     id: "osu-hard-clear",
-    title: "OSU-like: hard clear",
-    description: "Clear any track on Hard difficulty.",
+    title: "\u041f\u0440\u043e\u0439\u0442\u0438 \u043d\u0430 Hard",
+    description: "\u041f\u0440\u043e\u0439\u0442\u0438 \u043b\u044e\u0431\u0443\u044e \u043a\u0430\u0440\u0442\u0443 \u043d\u0430 \u0441\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u0438 Hard.",
     rarity: "rare",
     getProgress: (data) => ({ value: data.osuProgress.clearedDifficulties.includes("hard") ? 1 : 0, target: 1 }),
   },
   {
     id: "osu-extreme-clear",
-    title: "OSU-like: extreme clear",
-    description: "Clear any track on Extreme difficulty.",
+    title: "\u041f\u0440\u043e\u0439\u0442\u0438 \u043d\u0430 Extreme",
+    description: "\u041f\u0440\u043e\u0439\u0442\u0438 \u043b\u044e\u0431\u0443\u044e \u043a\u0430\u0440\u0442\u0443 \u043d\u0430 \u0441\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u0438 Extreme.",
     rarity: "epic",
     getProgress: (data) => ({ value: data.osuProgress.clearedDifficulties.includes("extreme") ? 1 : 0, target: 1 }),
   },
   {
     id: "osu-legend-clear",
-    title: "OSU-like: legend clear",
-    description: "Clear any track on Legend difficulty.",
+    title: "\u041f\u0440\u043e\u0439\u0442\u0438 \u043d\u0430 Legend",
+    description: "\u041f\u0440\u043e\u0439\u0442\u0438 \u043b\u044e\u0431\u0443\u044e \u043a\u0430\u0440\u0442\u0443 \u043d\u0430 \u0441\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u0438 Legend.",
     rarity: "impossible",
     getProgress: (data) => ({ value: data.osuProgress.clearedDifficulties.includes("legend") ? 1 : 0, target: 1 }),
   },
   {
     id: "osu-all-difficulties",
-    title: "OSU-like: all difficulties",
-    description: "Clear at least one track on every difficulty.",
+    title: "\u0412\u0441\u0435 \u0441\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u0438 OSU-like",
+    description: "\u041f\u0440\u043e\u0439\u0442\u0438 \u0445\u043e\u0442\u044f \u0431\u044b \u043f\u043e \u043e\u0434\u043d\u043e\u0439 \u043a\u0430\u0440\u0442\u0435 \u043d\u0430 \u043a\u0430\u0436\u0434\u043e\u0439 \u0441\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u0438.",
     rarity: "legendary",
     getProgress: (data) => ({ value: data.osuProgress.clearedDifficulties.length, target: OSU_DIFFICULTIES.length }),
   },
@@ -1134,7 +1163,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
       let nextOsuProgress = previous.osuProgress
       if (gameId === "osu") {
-        const trackId = payload.trackId === 1 || payload.trackId === 2 || payload.trackId === 3 ? payload.trackId : null
+        const rawTrackId = Number(payload.trackId ?? NaN)
+        const trackId = Number.isInteger(rawTrackId) && rawTrackId > 0 ? rawTrackId : null
         const difficulty =
           typeof payload.difficulty === "string" && (OSU_DIFFICULTIES as readonly string[]).includes(payload.difficulty)
             ? (payload.difficulty as OsuDifficulty)
@@ -1144,12 +1174,26 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         const comboRaw = Number(payload.maxCombo ?? NaN)
         const maxCombo = Number.isFinite(comboRaw) ? Math.max(0, Math.round(comboRaw)) : null
         const cleared = payload.cleared === undefined ? won : Boolean(payload.cleared)
+        const perfect = Boolean(payload.perfect) && cleared
+        const rawAvailableTracks = Number(payload.availableTracks ?? NaN)
+        const availableTracks =
+          Number.isFinite(rawAvailableTracks) && rawAvailableTracks > 0 ? Math.round(rawAvailableTracks) : null
 
+        const seenTracks = [...previous.osuProgress.seenTracks]
         const clearedTracks = [...previous.osuProgress.clearedTracks]
+        const perfectTracks = [...previous.osuProgress.perfectTracks]
         const clearedDifficulties = [...previous.osuProgress.clearedDifficulties]
-        const clearedCombinations = [...previous.osuProgress.clearedCombinations]
+        let knownTracks = previous.osuProgress.knownTracks
         let clears = previous.osuProgress.clears
+        let perfectClears = previous.osuProgress.perfectClears
         let legendClears = previous.osuProgress.legendClears
+
+        if (trackId !== null && !seenTracks.includes(trackId)) {
+          seenTracks.push(trackId)
+        }
+        if (availableTracks !== null) {
+          knownTracks = Math.max(knownTracks, availableTracks)
+        }
 
         if (cleared) {
           clears += 1
@@ -1159,23 +1203,29 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           if (difficulty && !clearedDifficulties.includes(difficulty)) {
             clearedDifficulties.push(difficulty)
           }
-          if (trackId !== null && difficulty) {
-            const key = `${trackId}_${difficulty}`
-            if (!clearedCombinations.includes(key)) {
-              clearedCombinations.push(key)
-            }
-          }
           if (difficulty === "legend") {
             legendClears += 1
           }
         }
+        if (perfect) {
+          perfectClears += 1
+          if (trackId !== null && !perfectTracks.includes(trackId)) {
+            perfectTracks.push(trackId)
+          }
+        }
+
+        knownTracks = Math.max(knownTracks, seenTracks.length, clearedTracks.length, perfectTracks.length)
 
         nextOsuProgress = {
+          ...previous.osuProgress,
           clears,
+          perfectClears,
           legendClears,
+          knownTracks,
+          seenTracks,
           clearedTracks,
+          perfectTracks,
           clearedDifficulties,
-          clearedCombinations,
           bestAccuracy: accuracy === null ? previous.osuProgress.bestAccuracy : Math.max(previous.osuProgress.bestAccuracy, accuracy),
           bestCombo: maxCombo === null ? previous.osuProgress.bestCombo : Math.max(previous.osuProgress.bestCombo, maxCombo),
         }
@@ -1195,9 +1245,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo<ProfileContextValue>(
     () => ({
       data,
+      siteProgressPercent,
+      achievementsProgressPercent,
+      unlockedCount,
+      achievementViews,
+      sortedAchievementViews,
       recordGameResult,
     }),
-    [data, recordGameResult],
+    [achievementViews, achievementsProgressPercent, data, recordGameResult, siteProgressPercent, sortedAchievementViews, unlockedCount],
   )
 
   const isHome = pathname === "/"
@@ -1397,6 +1452,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
                 >
                   Пройти обучение
                 </button>
+                <Link
+                  href="/profile"
+                  onClick={() => setProfileOpen(false)}
+                  className="block w-full text-left text-xs tracking-[0.12em] uppercase text-black/82 transition-opacity hover:opacity-65"
+                >
+                  {"\u041f\u043e\u043b\u043d\u044b\u0439 \u043f\u0440\u043e\u0444\u0438\u043b\u044c"}
+                </Link>
               </div>
 
               <div className="mt-4 overflow-y-auto pr-1">
@@ -1447,8 +1509,22 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 export function useProfileTracker() {
   const context = useContext(ProfileContext)
   if (!context) {
+    const siteProgressPercent = getSiteProgress(DEFAULT_PROFILE)
+    const achievementViews = getAchievementViews(DEFAULT_PROFILE, siteProgressPercent)
+    const sortedAchievementViews = [...achievementViews].sort((first, second) => {
+      const rarityDiff = rarityOrder[first.rarity] - rarityOrder[second.rarity]
+      if (rarityDiff !== 0) return rarityDiff
+      return first.title.localeCompare(second.title)
+    })
+    const unlockedCount = achievementViews.filter((achievement) => achievement.unlocked).length
+    const achievementsProgressPercent = Math.round(ratio(unlockedCount, achievementViews.length) * 100)
     return {
       data: DEFAULT_PROFILE,
+      siteProgressPercent,
+      achievementsProgressPercent,
+      unlockedCount,
+      achievementViews,
+      sortedAchievementViews,
       recordGameResult: () => {
         // noop outside provider.
       },
