@@ -94,7 +94,6 @@ export default async function RoutePage({ params }: RoutePageProps) {
       </header>
 
       <section className="relative z-10 mx-auto max-w-6xl px-6 py-[clamp(88px,10vh,120px)]">
-        <p className="text-[11px] tracking-[0.24em] text-[#111]/52 uppercase">{block.label}</p>
         <h1 className="mt-3 w-[108%] text-[clamp(44px,9vw,132px)] leading-[0.84] tracking-[-0.05em]">{detail.title}</h1>
         <p className="mt-5 max-w-[72ch] text-[clamp(17px,1.7vw,28px)] leading-[1.2] text-[#111]/82">{detail.subtitle}</p>
         <p className="mt-4 max-w-[76ch] text-base leading-relaxed text-[#111]/72">{detail.description}</p>

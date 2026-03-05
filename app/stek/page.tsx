@@ -503,16 +503,12 @@ export default function StackPage() {
               Система под капотом. Мы используем лучшие решения для быстрого и качественного выполнения задач.
             </p>
           </div>
-          <p className="mt-7 max-w-[78ch] text-[11px] tracking-[0.12em] text-[#111]/58 uppercase">
-            5 направлений, единая инженерная логика. Web Frontend, Web Backend, Mobile iOS, Mobile Android, Design.
-          </p>
         </section>
 
         <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
           <FadeInBlock>
             <div className="grid gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
               <div>
-                <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Ролевой каркас стека</p>
                 <div className="mt-7">
                   {roleRows.map((role) => {
                     const highlighted = isRoleHighlighted(role)
@@ -542,7 +538,6 @@ export default function StackPage() {
                         }}
                       >
                         <div className="flex gap-4 md:items-baseline md:gap-7">
-                          <span className="shrink-0 text-[11px] tracking-[0.22em] text-[#111]/56">{role.index}</span>
                           <span className="text-[clamp(20px,2.7vw,34px)] leading-[1.08] tracking-[-0.02em]">
                             {role.title}
                           </span>
@@ -554,7 +549,6 @@ export default function StackPage() {
               </div>
 
               <div>
-                <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Покрытие технологий</p>
                 <div className="mt-7 flex flex-wrap gap-2.5">
                   {competencyTags.map((competency) => {
                     const highlighted = isCompetencyHighlighted(competency)
@@ -605,7 +599,6 @@ export default function StackPage() {
         <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
           <FadeInBlock>
             <article className="rounded-[24px] border border-black/12 bg-[#f8f6f1]/96 p-[clamp(18px,3vw,34px)]">
-              <p className="text-[11px] tracking-[0.2em] text-[#111]/56 uppercase">Data Layer</p>
               <h2 className="mt-3 text-[clamp(30px,4.2vw,64px)] leading-[0.9] tracking-[-0.03em]">PostgreSQL</h2>
               <p className="mt-4 max-w-[58ch] text-[clamp(16px,1.45vw,22px)] leading-[1.28] text-[#111]/82">
                 PostgreSQL используется как единая база данных для web и mobile-контуров. Design-направление не работает

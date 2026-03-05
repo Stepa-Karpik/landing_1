@@ -450,6 +450,9 @@ export default function PeoplePage() {
                 boxShadow: `0 14px 32px rgba(0,0,0,${0.014 + focus * 0.03})`,
               }}
             >
+              <span className="pointer-events-none absolute right-[clamp(22px,2.9vw,38px)] top-[clamp(18px,2.4vw,30px)] text-[11px] tracking-[0.2em] text-[#111]/56 uppercase">
+                {person.status}
+              </span>
               <div className="grid h-full gap-[clamp(18px,2.3vw,34px)] md:grid-cols-[minmax(260px,0.36fr)_minmax(0,0.64fr)]">
                 <figure className="relative h-full min-h-[220px] overflow-hidden rounded-[26px] border border-black/12 bg-[#eceae5]">
                   {person.photoSrc ? (
@@ -462,14 +465,10 @@ export default function PeoplePage() {
                         className="object-cover"
                       />
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/18 via-black/2 to-black/10" />
-                      <span className="absolute left-5 top-4 text-[10px] tracking-[0.18em] text-white/68 uppercase">Photo</span>
                       <span className="absolute left-5 bottom-4 text-[13px] tracking-[0.16em] text-white/76 uppercase">{person.monogram}</span>
                     </>
                   ) : (
                     <>
-                      <span className="absolute left-5 top-4 text-[10px] tracking-[0.18em] text-[#111]/44 uppercase">
-                        Photo placeholder
-                      </span>
                       <span className="absolute left-5 bottom-5 text-[clamp(42px,5.8vw,94px)] leading-[0.86] tracking-[-0.04em] text-[#111]/82">
                         {person.monogram}
                       </span>
@@ -478,10 +477,6 @@ export default function PeoplePage() {
                 </figure>
 
                 <div className="flex min-h-0 flex-col">
-                  <div className="flex items-center justify-between gap-3 text-[11px] tracking-[0.2em] text-[#111]/56 uppercase">
-                    <span>#{person.number}</span>
-                    <span>{person.status}</span>
-                  </div>
 
                   <h2
                     className="mt-6 text-[clamp(34px,4.2vw,62px)] leading-[0.92] tracking-[-0.04em]"

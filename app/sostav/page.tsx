@@ -167,7 +167,6 @@ export default function SostavPage() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-end lg:gap-12">
             <FadeInBlock>
               <div>
-                <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">6 человек как система</p>
                 <h1 className="mt-3 text-[clamp(52px,9.8vw,142px)] leading-[0.82] tracking-[-0.05em]">СОСТАВ</h1>
               </div>
             </FadeInBlock>
@@ -185,12 +184,11 @@ export default function SostavPage() {
               В составе есть опыт побед в стартапах, хакатонах и конкурсах.
             </p>
             <div className="mt-3 w-full max-w-[560px] border-y border-black/12">
-              {winHighlights.map((item, index) => (
+              {winHighlights.map((item) => (
                 <p
                   key={`${item.title}-${item.year}`}
-                  className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-black/10 py-2.5 last:border-b-0"
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-black/10 py-2.5 last:border-b-0"
                 >
-                  <span className="text-[10px] tracking-[0.2em] text-[#111]/42">{String(index + 1).padStart(2, "0")}</span>
                   <span className="text-[11px] tracking-[0.12em] text-[#111]/78 uppercase">{item.title}</span>
                   <span className="font-mono text-[11px] tracking-[0.14em] text-[#111]/52">{item.year}</span>
                 </p>
@@ -204,7 +202,6 @@ export default function SostavPage() {
           <FadeInBlock>
             <div className="grid gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
               <div>
-                <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Ролевой каркас</p>
                 <div className="mt-7">
                   {roleRows.map((role) => {
                     const highlighted = isRoleHighlighted(role)
@@ -234,7 +231,6 @@ export default function SostavPage() {
                         }}
                       >
                         <div className="flex gap-4 md:items-baseline md:gap-7">
-                          <span className="shrink-0 text-[11px] tracking-[0.22em] text-[#111]/56">{role.index}</span>
                           <span className="text-[clamp(20px,2.7vw,34px)] leading-[1.08] tracking-[-0.02em]">
                             {role.title}
                           </span>
@@ -246,7 +242,6 @@ export default function SostavPage() {
               </div>
 
               <div>
-                <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Покрытие компетенций</p>
                 <div className="mt-7 flex flex-wrap gap-2.5">
                   {competencyTags.map((competency) => {
                     const highlighted = isCompetencyHighlighted(competency)
@@ -287,10 +282,6 @@ export default function SostavPage() {
         </section>
 
         <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
-          <FadeInBlock>
-            <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Принципы внутри команды</p>
-          </FadeInBlock>
-
           <motion.ul
             ref={principlesRef}
             initial="hidden"
