@@ -252,6 +252,17 @@ body::before {
   }
 }
 
+@keyframes ambient-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(1.8%, -2.8%, 0) scale(1.04);
+  }
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0%);
@@ -264,6 +275,24 @@ body::before {
 
 .animate-marquee {
   animation: marquee 36s linear infinite;
+}
+
+.route-ambient {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(108px);
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  z-index: 0;
+  will-change: transform, opacity;
+  animation: ambient-drift 24s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-ambient {
+    animation: none;
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {

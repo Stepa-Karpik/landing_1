@@ -2,6 +2,7 @@
 
 import { motion, useInView } from "framer-motion"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
+import { RouteAtmosphere, type AtmosphereBlob } from "@/components/route-atmosphere"
 
 const REVEAL_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
@@ -298,6 +299,35 @@ const stackDirections: StackDirection[] = [
   },
 ]
 
+const stekAtmosphereBlobs: AtmosphereBlob[] = [
+  {
+    id: "stek-blue",
+    color: "#95afe2",
+    size: "clamp(760px,72vw,1180px)",
+    top: "16%",
+    left: "52%",
+    maxShift: 100,
+  },
+  {
+    id: "stek-violet",
+    color: "#b6a4df",
+    size: "clamp(640px,60vw,980px)",
+    top: "-10%",
+    left: "-8%",
+    opacity: 0.24,
+    maxShift: 90,
+  },
+  {
+    id: "stek-pink",
+    color: "#c99ad8",
+    size: "clamp(560px,52vw,840px)",
+    top: "58%",
+    left: "4%",
+    opacity: 0.22,
+    maxShift: 84,
+  },
+]
+
 function buildMarqueeLanes(items: string[]) {
   const base = Array.from(new Set(items))
   const pivot = Math.max(1, Math.floor(base.length / 3))
@@ -347,9 +377,13 @@ function TechLane({
   const repeatedItems = [...items, ...items]
 
   return (
-    <div className="relative overflow-hidden border-b border-black/18 last:border-b-0">
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-14 bg-gradient-to-r from-[#f8f6f1] to-transparent md:w-28" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-14 bg-gradient-to-l from-[#f8f6f1] to-transparent md:w-28" />
+    <div
+      className="relative overflow-hidden border-b border-black/18 last:border-b-0"
+      style={{
+        maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
+      }}
+    >
 
       <div
         className="flex w-max items-center gap-3.5 py-3.5 md:py-4 animate-marquee"
@@ -443,9 +477,10 @@ export default function StackPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f4ef] text-[#111111]">
-      <div className="mx-auto max-w-6xl px-6 pb-16 pt-14 md:pb-24 md:pt-20">
-        <section className="pb-16 md:pb-24">
+    <main className="relative isolate min-h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
+      <RouteAtmosphere blobs={stekAtmosphereBlobs} />
+      <div className="relative z-10 mx-auto max-w-6xl px-6 pb-[clamp(90px,10vh,120px)] pt-[clamp(82px,9vh,116px)]">
+        <section className="pb-[clamp(88px,10vh,120px)]">
           <div className="grid gap-10 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] xl:items-end xl:gap-12">
             <h1
               className="min-w-0 max-w-[11ch] text-[clamp(42px,6.2vw,92px)] leading-[0.86] tracking-[-0.045em]"
@@ -473,7 +508,7 @@ export default function StackPage() {
           </p>
         </section>
 
-        <section className="border-t border-black/12 py-16 md:py-24">
+        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
           <FadeInBlock>
             <div className="grid gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
               <div>
@@ -559,7 +594,7 @@ export default function StackPage() {
           </FadeInBlock>
         </section>
 
-        <section className="border-t border-black/12 py-16 md:py-24">
+        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
           <div className="space-y-4 md:space-y-6">
             {stackDirections.map((direction, index) => (
               <StackDirectionShowcase key={direction.id} direction={direction} index={index} />
@@ -567,9 +602,9 @@ export default function StackPage() {
           </div>
         </section>
 
-        <section className="border-t border-black/12 py-16 md:py-24">
+        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
           <FadeInBlock>
-            <article className="rounded-[24px] border border-black/12 bg-[#f8f6f1] p-[clamp(18px,3vw,34px)]">
+            <article className="rounded-[24px] border border-black/12 bg-[#f8f6f1]/96 p-[clamp(18px,3vw,34px)]">
               <p className="text-[11px] tracking-[0.2em] text-[#111]/56 uppercase">Data Layer</p>
               <h2 className="mt-3 text-[clamp(30px,4.2vw,64px)] leading-[0.9] tracking-[-0.03em]">PostgreSQL</h2>
               <p className="mt-4 max-w-[58ch] text-[clamp(16px,1.45vw,22px)] leading-[1.28] text-[#111]/82">
@@ -597,7 +632,7 @@ export default function StackPage() {
           </FadeInBlock>
         </section>
 
-        <section ref={finalRef} className="border-t border-black/12 pt-16 md:pt-24">
+        <section ref={finalRef} className="border-t border-black/12 pt-[clamp(88px,10vh,120px)]">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={finalInView ? { opacity: 1, y: 0 } : undefined}

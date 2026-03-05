@@ -2,9 +2,10 @@
 
 import Image from "next/image"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { RouteAtmosphere, type AtmosphereBlob } from "@/components/route-atmosphere"
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)"
-const PANEL_SIZE_CLASS = "h-[clamp(460px,78vh,820px)] w-[clamp(320px,92vw,1320px)]"
+const PANEL_SIZE_CLASS = "h-[clamp(500px,80vh,860px)] w-[clamp(320px,92vw,1320px)]"
 
 const WHEEL_SCROLL_MULTIPLIER = 0.5
 const WHEEL_MAX_INPUT = 240
@@ -121,6 +122,35 @@ function getTextReveal(focus: number) {
   const linear = clamp((focus - 0.32) / 0.68, 0, 1)
   return 1 - Math.pow(1 - linear, 1.35)
 }
+
+const lyudiAtmosphereBlobs: AtmosphereBlob[] = [
+  {
+    id: "lyudi-rose",
+    color: "#c79ad7",
+    size: "clamp(820px,76vw,1260px)",
+    top: "-4%",
+    left: "42%",
+    maxShift: 100,
+  },
+  {
+    id: "lyudi-blue",
+    color: "#98b4e4",
+    size: "clamp(620px,58vw,920px)",
+    top: "52%",
+    left: "8%",
+    opacity: 0.24,
+    maxShift: 92,
+  },
+  {
+    id: "lyudi-lavender",
+    color: "#baa8e2",
+    size: "clamp(560px,52vw,840px)",
+    top: "-14%",
+    left: "74%",
+    opacity: 0.22,
+    maxShift: 86,
+  },
+]
 
 export default function PeoplePage() {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
@@ -357,14 +387,15 @@ export default function PeoplePage() {
   const railPadding = useMemo(() => "max(20px, calc((100vw - clamp(320px, 92vw, 1320px)) / 2))", [])
 
   return (
-    <main className="relative h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
+    <main className="relative isolate h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
+      <RouteAtmosphere blobs={lyudiAtmosphereBlobs} scrollContainer={scrollerRef} />
       <div
         ref={scrollerRef}
-        className="flex h-full w-full touch-pan-x items-center gap-[clamp(64px,6vw,108px)] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="relative z-10 flex h-full w-full touch-pan-x items-center gap-[clamp(64px,6vw,108px)] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ paddingInline: railPadding }}
       >
         <section
-          className={`relative flex shrink-0 items-end border border-black/10 bg-[#f7f5ef] px-[clamp(24px,4.4vw,68px)] py-[clamp(24px,5vh,56px)] ${PANEL_SIZE_CLASS}`}
+          className={`relative flex shrink-0 items-end border border-black/12 bg-[#f8f5f0]/74 px-[clamp(30px,5vw,82px)] py-[clamp(30px,6vh,72px)] ${PANEL_SIZE_CLASS}`}
         >
           <div className="grid w-full gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,0.96fr)] md:items-end md:gap-14">
             <h1
@@ -411,12 +442,12 @@ export default function PeoplePage() {
               ref={(element) => {
                 cardRefs.current[index] = element
               }}
-              className={`relative shrink-0 border bg-[#f7f5ef] p-[clamp(18px,2.6vw,32px)] transition-[opacity,transform,border-color,box-shadow] duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${PANEL_SIZE_CLASS}`}
+              className={`relative shrink-0 border bg-[#f8f5f0]/70 p-[clamp(22px,2.9vw,38px)] transition-[opacity,transform,border-color,box-shadow] duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${PANEL_SIZE_CLASS}`}
               style={{
                 opacity: baseOpacity,
                 transform: `scale(${baseScale})`,
                 borderColor: `rgba(17,17,17,${0.14 + focus * 0.16})`,
-                boxShadow: `0 20px 44px rgba(0,0,0,${0.028 + focus * 0.056})`,
+                boxShadow: `0 14px 32px rgba(0,0,0,${0.014 + focus * 0.03})`,
               }}
             >
               <div className="grid h-full gap-[clamp(18px,2.3vw,34px)] md:grid-cols-[minmax(260px,0.36fr)_minmax(0,0.64fr)]">
@@ -524,7 +555,7 @@ export default function PeoplePage() {
 
         <section
           ref={finalRef}
-          className={`relative flex shrink-0 items-end border border-black/10 bg-[#f7f5ef] px-[clamp(24px,4.4vw,68px)] py-[clamp(24px,5vh,56px)] ${PANEL_SIZE_CLASS}`}
+          className={`relative flex shrink-0 items-end border border-black/12 bg-[#f8f5f0]/74 px-[clamp(30px,5vw,82px)] py-[clamp(30px,6vh,72px)] ${PANEL_SIZE_CLASS}`}
         >
           <div className="max-w-[70ch]">
             <h2

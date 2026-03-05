@@ -2,6 +2,7 @@
 
 import { motion, useInView } from "framer-motion"
 import { type ReactNode, useMemo, useRef, useState } from "react"
+import { RouteAtmosphere, type AtmosphereBlob } from "@/components/route-atmosphere"
 
 const REVEAL_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
@@ -83,6 +84,35 @@ const winHighlights = [
   { title: "UMIRhack", year: "2025" },
 ]
 
+const sostavAtmosphereBlobs: AtmosphereBlob[] = [
+  {
+    id: "sostav-blue",
+    color: "#95b3e2",
+    size: "clamp(760px,72vw,1180px)",
+    top: "18%",
+    left: "-10%",
+    maxShift: 100,
+  },
+  {
+    id: "sostav-rose",
+    color: "#c999d8",
+    size: "clamp(620px,58vw,920px)",
+    top: "-8%",
+    left: "58%",
+    opacity: 0.25,
+    maxShift: 92,
+  },
+  {
+    id: "sostav-lavender",
+    color: "#b5ace2",
+    size: "clamp(560px,52vw,840px)",
+    top: "56%",
+    left: "62%",
+    opacity: 0.22,
+    maxShift: 84,
+  },
+]
+
 function FadeInBlock({
   children,
   className,
@@ -130,9 +160,10 @@ export default function SostavPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f4ef] text-[#111111]">
-      <div className="mx-auto max-w-6xl px-6 pb-16 pt-14 md:pb-24 md:pt-20">
-        <section className="pb-16 md:pb-24">
+    <main className="relative isolate min-h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
+      <RouteAtmosphere blobs={sostavAtmosphereBlobs} />
+      <div className="relative z-10 mx-auto max-w-6xl px-6 pb-[clamp(90px,10vh,120px)] pt-[clamp(82px,9vh,116px)]">
+        <section className="pb-[clamp(88px,10vh,120px)]">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-end lg:gap-12">
             <FadeInBlock>
               <div>
@@ -168,7 +199,7 @@ export default function SostavPage() {
           </FadeInBlock>
         </section>
 
-        <section className="border-t border-black/12 py-16 md:py-24">
+        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
         
           <FadeInBlock>
             <div className="grid gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
@@ -255,7 +286,7 @@ export default function SostavPage() {
           </FadeInBlock>
         </section>
 
-        <section className="border-t border-black/12 py-16 md:py-24">
+        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
           <FadeInBlock>
             <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Принципы внутри команды</p>
           </FadeInBlock>
@@ -297,7 +328,7 @@ export default function SostavPage() {
           </motion.ul>
         </section>
 
-        <section className="border-t border-black/12 pt-16 md:pt-24">
+        <section className="border-t border-black/12 pt-[clamp(88px,10vh,120px)]">
           <FadeInBlock>
             <p className="max-w-[44ch] text-[clamp(22px,2.8vw,40px)] leading-[1.18] tracking-[-0.02em] text-[#111]/88">
               48 часов — это не марафон идей. Это дисциплина решений: быстро понять кейс, собрать архитектуру,

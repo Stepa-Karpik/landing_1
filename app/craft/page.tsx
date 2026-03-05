@@ -2,6 +2,7 @@
 
 import { motion, useInView } from "framer-motion"
 import { type ReactNode, useEffect, useRef, useState } from "react"
+import { RouteAtmosphere, type AtmosphereBlob } from "@/components/route-atmosphere"
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
@@ -72,6 +73,35 @@ const protocolLines: ProtocolLine[] = [
   { id: "result", statement: "Финишировать только тем, что можно защитить и запустить.", mark: "Result" },
 ]
 
+const craftAtmosphereBlobs: AtmosphereBlob[] = [
+  {
+    id: "craft-rose",
+    color: "#bd99d8",
+    size: "clamp(760px,72vw,1180px)",
+    top: "2%",
+    left: "42%",
+    maxShift: 100,
+  },
+  {
+    id: "craft-blue",
+    color: "#97b4e4",
+    size: "clamp(620px,58vw,920px)",
+    top: "52%",
+    left: "-10%",
+    opacity: 0.22,
+    maxShift: 96,
+  },
+  {
+    id: "craft-lavender",
+    color: "#c7a1de",
+    size: "clamp(560px,52vw,840px)",
+    top: "-10%",
+    left: "74%",
+    opacity: 0.24,
+    maxShift: 88,
+  },
+]
+
 function RevealBlock({
   children,
   className,
@@ -122,15 +152,15 @@ export default function CraftPage() {
   }, [])
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-x-0 top-0 h-[36vh] bg-[radial-gradient(80%_70%_at_50%_0%,rgba(17,17,17,0.08)_0%,rgba(17,17,17,0)_70%)]" />
+    <main className="relative isolate min-h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
+      <RouteAtmosphere blobs={craftAtmosphereBlobs} />
+      <div className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute left-[6%] top-0 h-full w-px bg-black/6" />
         <div className="absolute right-[6%] top-0 h-full w-px bg-black/6" />
       </div>
 
-      <div className="mx-auto max-w-6xl px-6 pb-20 pt-14 md:pb-28 md:pt-20">
-        <section className="relative pb-20 md:pb-28">
+      <div className="relative z-10 mx-auto max-w-6xl px-6 pb-[clamp(90px,10vh,120px)] pt-[clamp(82px,9vh,116px)]">
+        <section className="relative pb-[clamp(88px,10vh,120px)]">
           <div className="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
             <div>
               <p
@@ -177,7 +207,7 @@ export default function CraftPage() {
           </div>
         </section>
 
-        <section className="border-t border-black/12 py-20 md:py-28">
+        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
           <div className="grid gap-10 lg:grid-cols-[minmax(190px,0.27fr)_minmax(0,0.73fr)] lg:gap-14">
             <RevealBlock className="lg:sticky lg:top-12 lg:h-fit">
               <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Execution Sequence</p>
@@ -231,7 +261,7 @@ export default function CraftPage() {
           </div>
         </section>
 
-        <section className="border-t border-black/12 py-20 md:py-28">
+        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
           <RevealBlock>
             <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Protocol</p>
             <h2 className="mt-4 max-w-[13ch] text-[clamp(34px,5vw,74px)] leading-[0.94] tracking-[-0.04em]">
@@ -274,12 +304,12 @@ export default function CraftPage() {
           </motion.ul>
         </section>
 
-        <section ref={finalRef} className="border-t border-black/12 pt-20 md:pt-28">
+        <section ref={finalRef} className="border-t border-black/12 pt-[clamp(88px,10vh,120px)]">
           <motion.article
             initial={{ opacity: 0, y: 20 }}
             animate={finalVisible ? { opacity: 1, y: 0 } : undefined}
             transition={{ duration: 0.68, ease: EASE }}
-            className="relative overflow-hidden border border-black/12 bg-[#f7f5ef] px-5 py-8 md:px-10 md:py-12"
+            className="relative overflow-hidden border border-black/12 bg-[#f8f5f0]/95 px-5 py-8 md:px-10 md:py-12"
           >
             <div className="pointer-events-none absolute -right-[12%] top-1/2 h-[280px] w-[280px] -translate-y-1/2 rounded-full border border-black/8" />
             <p className="text-[11px] tracking-[0.22em] text-[#111]/56 uppercase">Final Statement</p>
