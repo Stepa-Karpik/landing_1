@@ -118,7 +118,7 @@ export function CustomCursor() {
   }, [])
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-[9999] select-none">
+    <div aria-hidden data-global-cursor="1" className="pointer-events-none fixed inset-0 z-[9999] select-none">
       <div
         ref={orbRef}
         className="fixed left-0 top-0 rounded-full"

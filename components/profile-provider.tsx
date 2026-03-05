@@ -14,7 +14,7 @@ import {
 } from "react"
 
 type Rarity = "common" | "rare" | "epic" | "legendary"
-type GameId = "tetris" | "dino" | "minesweeper" | "match3" | "snake" | "game2048" | "breakout" | "simon"
+type GameId = "tetris" | "dino" | "minesweeper" | "match3" | "snake" | "game2048" | "breakout" | "simon" | "osu"
 
 interface GameStatsEntry {
   plays: number
@@ -96,6 +96,7 @@ const GAME_ROUTES = [
   "/minigames/2048",
   "/minigames/breakout",
   "/minigames/simon",
+  "/minigames/osu",
 ] as const
 const SITE_ROUTES = [...MAIN_ROUTES, ...GAME_ROUTES] as const
 
@@ -108,6 +109,7 @@ const miniGames: ReadonlyArray<{ id: GameId; label: string; href: (typeof GAME_R
   { id: "game2048", label: "2048 4x4", href: "/minigames/2048", goal: "плитка 2048" },
   { id: "breakout", label: "Breakout / Арканоид", href: "/minigames/breakout", goal: "1 победа" },
   { id: "simon", label: "Simon", href: "/minigames/simon", goal: "10 шагов" },
+  { id: "osu", label: "OSU-like", href: "/minigames/osu", goal: "120000 points" },
 ]
 
 const rarityStyles: Record<Rarity, { badge: string; accent: string }> = {
@@ -158,6 +160,7 @@ const DEFAULT_PROFILE: ProfileData = {
     game2048: { ...defaultGameEntry },
     breakout: { ...defaultGameEntry },
     simon: { ...defaultGameEntry },
+    osu: { ...defaultGameEntry },
   },
 }
 
@@ -276,6 +279,7 @@ function sanitizeProfileData(raw: unknown): ProfileData {
       game2048: normalizeEntry(gameStatsRaw.game2048),
       breakout: normalizeEntry(gameStatsRaw.breakout),
       simon: normalizeEntry(gameStatsRaw.simon),
+      osu: normalizeEntry(gameStatsRaw.osu),
     },
   }
 }
@@ -528,6 +532,13 @@ const achievementDefinitions: AchievementDefinition[] = [
     getProgress: (data) => ({ value: data.gameStats.simon.bestScore, target: 10 }),
   },
   {
+    id: "osu-120000",
+    title: "OSU-like: precise flow",
+    description: "Reach 120000 score in OSU-like mode.",
+    rarity: "legendary",
+    getProgress: (data) => ({ value: data.gameStats.osu.bestScore, target: 120000 }),
+  },
+  {
     id: "games-master",
     title: "Покоритель мини-игр",
     description: "Выполнить цели всех мини-игр.",
@@ -541,9 +552,19 @@ const achievementDefinitions: AchievementDefinition[] = [
       const game2048Done = data.gameStats.game2048.bestScore >= 2048 ? 1 : 0
       const breakoutDone = data.gameStats.breakout.wins >= 1 ? 1 : 0
       const simonDone = data.gameStats.simon.bestScore >= 10 ? 1 : 0
+      const osuDone = data.gameStats.osu.bestScore >= 120000 ? 1 : 0
       return {
-        value: tetrisDone + dinoDone + minesweeperDone + match3Done + snakeDone + game2048Done + breakoutDone + simonDone,
-        target: 8,
+        value:
+          tetrisDone +
+          dinoDone +
+          minesweeperDone +
+          match3Done +
+          snakeDone +
+          game2048Done +
+          breakoutDone +
+          simonDone +
+          osuDone,
+        target: 9,
       }
     },
   },
