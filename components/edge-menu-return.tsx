@@ -11,7 +11,6 @@ const LEFT_ARROW = "\u2190"
 export function EdgeMenuReturn() {
   const pathname = usePathname()
   const [supportsDesktopHover, setSupportsDesktopHover] = useState<boolean | null>(null)
-  const [isEdgeHovered, setIsEdgeHovered] = useState(false)
   const [isHintVisible, setIsHintVisible] = useState(false)
 
   useEffect(() => {
@@ -58,27 +57,23 @@ export function EdgeMenuReturn() {
     )
   }
 
-  const isArrowVisible = isEdgeHovered || isHintVisible
-
   return (
-    <div
-      className="fixed inset-y-0 left-0 z-[120] w-[40px]"
-      onMouseEnter={() => setIsEdgeHovered(true)}
-      onMouseLeave={() => setIsEdgeHovered(false)}
+    <Link
+      href="/"
+      aria-label="Return to main menu"
+      className="group fixed inset-y-0 left-0 z-[120] block w-[40px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30 hover:bg-[rgba(115,213,255,0.07)]"
+      style={{
+        backgroundColor: isHintVisible ? "rgba(115, 213, 255, 0.16)" : "transparent",
+        transition: `background-color 280ms ${EASE}`,
+      }}
     >
-      <Link
-        href="/"
-        aria-label="Return to main menu"
-        className="absolute left-4 top-1/2 text-[13px] leading-none text-[#111111] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
-        style={{
-          opacity: isArrowVisible ? 1 : 0,
-          transform: `translate3d(${isArrowVisible ? 0 : -10}px, -50%, 0)`,
-          transition: `opacity 280ms ${EASE}, transform 280ms ${EASE}`,
-          pointerEvents: isArrowVisible ? "auto" : "none",
-        }}
+      <span
+        aria-hidden
+        className="absolute left-4 top-1/2 -translate-x-[10px] -translate-y-1/2 text-[13px] leading-none text-[#111111] opacity-0 transition-[opacity,transform] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0 group-hover:opacity-100"
+        style={isHintVisible ? { opacity: 1, transform: "translate3d(0, -50%, 0)" } : undefined}
       >
         {LEFT_ARROW}
-      </Link>
-    </div>
+      </span>
+    </Link>
   )
 }
