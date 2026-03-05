@@ -517,6 +517,7 @@ export default function StackPage() {
                       <button
                         key={role.id}
                         type="button"
+                        data-stack-id={`role-${role.id}`}
                         onMouseEnter={() => {
                           setActiveRoleId(role.id)
                           setActiveCompetency(null)
@@ -557,6 +558,7 @@ export default function StackPage() {
                       <button
                         key={competency}
                         type="button"
+                        data-stack-id={`tech-${competency.toLowerCase().replace(/\s+/g, "-").replace(/[/.]/g, "-")}`}
                         onMouseEnter={() => {
                           setActiveCompetency(competency)
                           setActiveRoleId(null)
