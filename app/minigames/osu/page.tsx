@@ -53,6 +53,9 @@ interface BackgroundAsset {
 interface BeatNoteBase {
   tMs: number
   r?: number
+  colorIndex?: number
+  colorOrder?: number
+  colorRunId?: number
 }
 
 interface BeatCircle extends BeatNoteBase {
@@ -257,9 +260,9 @@ function formatTime(ms: number) {
   return `${minutes}:${seconds}`
 }
 
-function accuracyOf(totalHitValue: number, totalObjects: number) {
-  if (totalObjects <= 0) return 100
-  return clamp((totalHitValue / (totalObjects * 300)) * 100, 0, 100)
+function accuracyOf(totalHitValue: number, judgedObjects: number) {
+  if (judgedObjects <= 0) return 100
+  return clamp((totalHitValue / (judgedObjects * 300)) * 100, 0, 100)
 }
 
 function rankingFromStats(
@@ -292,6 +295,11 @@ function createRng(seed: number) {
 function pullPoint(object: BeatObject) {
   if (object.kind === "circle") return { x: object.x, y: object.y }
   return object.points[0] ?? { x: 0.5, y: 0.5 }
+}
+
+function pullTailPoint(object: BeatObject) {
+  if (object.kind === "circle") return { x: object.x, y: object.y }
+  return object.points[object.points.length - 1] ?? object.points[0] ?? { x: 0.5, y: 0.5 }
 }
 
 function percentile(values: number[], ratio: number) {
@@ -592,6 +600,151 @@ function rhythmProfile(difficulty: Difficulty) {
   return { subdivision: 0.25, onBeatChance: 1, offBeatChance: 0.94, snapMs: 68, maxNotes: 980 }
 }
 
+interface MovementProfile {
+  minJump: number
+  sameColorMaxJump: number
+  differentColorMaxJump: number
+  longGapBonus: number
+  absoluteMaxJump: number
+  turnLimit: number
+  sliderSegment: [number, number]
+}
+
+function movementProfile(difficulty: Difficulty): MovementProfile {
+  if (difficulty === "easy") {
+    return {
+      minJump: 0.07,
+      sameColorMaxJump: 0.19,
+      differentColorMaxJump: 0.24,
+      longGapBonus: 0.08,
+      absoluteMaxJump: 0.32,
+      turnLimit: Math.PI * 0.62,
+      sliderSegment: [0.09, 0.14],
+    }
+  }
+  if (difficulty === "normal") {
+    return {
+      minJump: 0.08,
+      sameColorMaxJump: 0.22,
+      differentColorMaxJump: 0.29,
+      longGapBonus: 0.1,
+      absoluteMaxJump: 0.36,
+      turnLimit: Math.PI * 0.72,
+      sliderSegment: [0.1, 0.16],
+    }
+  }
+  if (difficulty === "hard") {
+    return {
+      minJump: 0.09,
+      sameColorMaxJump: 0.25,
+      differentColorMaxJump: 0.34,
+      longGapBonus: 0.12,
+      absoluteMaxJump: 0.42,
+      turnLimit: Math.PI * 0.82,
+      sliderSegment: [0.11, 0.18],
+    }
+  }
+  if (difficulty === "extreme") {
+    return {
+      minJump: 0.1,
+      sameColorMaxJump: 0.29,
+      differentColorMaxJump: 0.39,
+      longGapBonus: 0.14,
+      absoluteMaxJump: 0.47,
+      turnLimit: Math.PI * 0.92,
+      sliderSegment: [0.12, 0.2],
+    }
+  }
+  return {
+    minJump: 0.11,
+    sameColorMaxJump: 0.32,
+    differentColorMaxJump: 0.43,
+    longGapBonus: 0.15,
+    absoluteMaxJump: 0.52,
+    turnLimit: Math.PI * 1.02,
+    sliderSegment: [0.13, 0.22],
+  }
+}
+
+function randomIntInclusive(rng: () => number, min: number, max: number) {
+  return min + Math.floor(rng() * (max - min + 1))
+}
+
+function nextColorIndex(rng: () => number, previousColor: number) {
+  if (CIRCLE_COLORS.length <= 1) return 0
+  let next = previousColor
+  let guard = 0
+  while (next === previousColor && guard < 8) {
+    next = Math.floor(rng() * CIRCLE_COLORS.length)
+    guard += 1
+  }
+  if (next === previousColor) {
+    return (previousColor + 1) % CIRCLE_COLORS.length
+  }
+  return next
+}
+
+function pickSequentialPoint(
+  rng: () => number,
+  previousX: number,
+  previousY: number,
+  previousAngle: number,
+  minJump: number,
+  maxJump: number,
+  turnLimit: number,
+) {
+  const boundsMin = 0.08
+  const boundsMax = 0.92
+  const attempts = 24
+  let best:
+    | {
+        x: number
+        y: number
+        angle: number
+        distance: number
+        score: number
+      }
+    | null = null
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const angle = previousAngle + (rng() - 0.5) * turnLimit * 2
+    const plannedDistance = minJump + rng() * Math.max(0.0001, maxJump - minJump)
+    const candidateX = clamp(previousX + Math.cos(angle) * plannedDistance, boundsMin, boundsMax)
+    const candidateY = clamp(previousY + Math.sin(angle) * plannedDistance, boundsMin, boundsMax)
+    const distance = Math.hypot(candidateX - previousX, candidateY - previousY)
+    if (distance < minJump * 0.7) continue
+
+    const edgePadding = Math.min(candidateX - boundsMin, boundsMax - candidateX, candidateY - boundsMin, boundsMax - candidateY)
+    const score = Math.abs(distance - plannedDistance) + (edgePadding < 0.045 ? (0.045 - edgePadding) * 1.9 : 0)
+    if (!best || score < best.score) {
+      best = { x: candidateX, y: candidateY, angle, distance, score }
+    }
+    if (score < 0.05) break
+  }
+
+  if (best) {
+    const angle = Math.atan2(best.y - previousY, best.x - previousX)
+    return {
+      x: best.x,
+      y: best.y,
+      angle: Number.isFinite(angle) ? angle : previousAngle,
+      distance: best.distance,
+    }
+  }
+
+  const fallbackAngle = rng() * Math.PI * 2
+  const fallbackDistance = minJump + (maxJump - minJump) * 0.55
+  const fallbackX = clamp(previousX + Math.cos(fallbackAngle) * fallbackDistance, boundsMin, boundsMax)
+  const fallbackY = clamp(previousY + Math.sin(fallbackAngle) * fallbackDistance, boundsMin, boundsMax)
+  const angle = Math.atan2(fallbackY - previousY, fallbackX - previousX)
+  return {
+    x: fallbackX,
+    y: fallbackY,
+    angle: Number.isFinite(angle) ? angle : previousAngle,
+    distance: Math.hypot(fallbackX - previousX, fallbackY - previousY),
+  }
+}
+
 function generateBeatmap(
   trackId: 1 | 2 | 3,
   difficulty: Difficulty,
@@ -600,6 +753,7 @@ function generateBeatmap(
 ): BeatObject[] {
   const settings = DIFFICULTY[difficulty]
   const profile = rhythmProfile(difficulty)
+  const movement = movementProfile(difficulty)
   const tailBufferMs = SLIDER_TAIL_BUFFER_MS[difficulty]
   const difficultySeed = { easy: 11, normal: 29, hard: 53, extreme: 79, legend: 101 }[difficulty]
   const rng = createRng(trackId * 937 + difficultySeed)
@@ -612,8 +766,58 @@ function generateBeatmap(
   const restMarginAfterMs = Math.max(settings.hit50 + 90, stepMs * 0.52)
   let tMs = Math.max(FIRST_NOTE_DELAY_MS, analysis.firstBeatMs)
   let nextAllowedMs = tMs
-  let prevX = 0.5
-  let prevY = 0.5
+  let prevX = 0.16 + rng() * 0.68
+  let prevY = 0.16 + rng() * 0.68
+  let prevAngle = rng() * Math.PI * 2
+  let prevSpawnMs = tMs - beatPeriodMs
+
+  let activeColorIndex = Math.floor(rng() * CIRCLE_COLORS.length)
+  let activeColorRunId = 0
+  let activeColorOrder = 1
+  let activeColorRunLeft = randomIntInclusive(rng, 3, 9)
+  let previousColorIndex = activeColorIndex
+
+  const takeColorState = () => {
+    const state = {
+      colorIndex: activeColorIndex,
+      colorOrder: activeColorOrder,
+      colorRunId: activeColorRunId,
+    }
+    activeColorOrder += 1
+    activeColorRunLeft -= 1
+    if (activeColorRunLeft <= 0) {
+      activeColorIndex = nextColorIndex(rng, activeColorIndex)
+      activeColorRunId += 1
+      activeColorOrder = 1
+      activeColorRunLeft = randomIntInclusive(rng, 3, 9)
+    }
+    return state
+  }
+
+  const pushFallbackCircle = (spawnMs: number, intervalMs: number) => {
+    const sameColorAsPrevious = notes.length > 0 && activeColorIndex === previousColorIndex
+    const intervalFactor = clamp((intervalMs / Math.max(beatPeriodMs, 1) - 1) / 2.3, 0, 1)
+    const jumpMaxBase = sameColorAsPrevious ? movement.sameColorMaxJump : movement.differentColorMaxJump
+    const jumpMax = clamp(jumpMaxBase + movement.longGapBonus * intervalFactor, movement.minJump + 0.05, movement.absoluteMaxJump)
+    const jumpMin = clamp(movement.minJump * (sameColorAsPrevious ? 0.92 : 1.04), 0.06, jumpMax - 0.04)
+    const turnLimit = sameColorAsPrevious ? movement.turnLimit : movement.turnLimit * 1.18
+    const placement = pickSequentialPoint(rng, prevX, prevY, prevAngle, jumpMin, jumpMax, turnLimit)
+    const colorState = takeColorState()
+
+    notes.push({
+      kind: "circle",
+      tMs: Math.round(spawnMs),
+      x: placement.x,
+      y: placement.y,
+      ...colorState,
+    })
+
+    previousColorIndex = colorState.colorIndex
+    prevX = placement.x
+    prevY = placement.y
+    prevAngle = placement.angle
+    prevSpawnMs = spawnMs
+  }
 
   while (tMs < finishMs && notes.length < profile.maxNotes) {
     if (tMs < nextAllowedMs) {
@@ -643,18 +847,16 @@ function generateBeatmap(
       tMs += stepMs
       continue
     }
-
-    let nextX = 0.12 + rng() * 0.76
-    let nextY = 0.12 + rng() * 0.76
-    let guard = 0
-    while (guard < 10) {
-      const dx = nextX - prevX
-      const dy = nextY - prevY
-      if (Math.sqrt(dx * dx + dy * dy) >= 0.16) break
-      nextX = 0.12 + rng() * 0.76
-      nextY = 0.12 + rng() * 0.76
-      guard += 1
-    }
+    const sameColorAsPrevious = notes.length > 0 && activeColorIndex === previousColorIndex
+    const intervalMs = notes.length > 0 ? Math.max(1, snappedTime - prevSpawnMs) : beatPeriodMs
+    const intervalFactor = clamp((intervalMs / Math.max(beatPeriodMs, 1) - 1) / 2.3, 0, 1)
+    const jumpMaxBase = sameColorAsPrevious ? movement.sameColorMaxJump : movement.differentColorMaxJump
+    const jumpMax = clamp(jumpMaxBase + movement.longGapBonus * intervalFactor, movement.minJump + 0.05, movement.absoluteMaxJump)
+    const jumpMin = clamp(movement.minJump * (sameColorAsPrevious ? 0.92 : 1.04), 0.06, jumpMax - 0.04)
+    const turnLimit = sameColorAsPrevious ? movement.turnLimit : movement.turnLimit * 1.18
+    const placement = pickSequentialPoint(rng, prevX, prevY, prevAngle, jumpMin, jumpMax, turnLimit)
+    const nextX = placement.x
+    const nextY = placement.y
 
     let makeSlider = rng() < settings.sliderChance * (onBeat ? 1.06 : 0.74)
     let sliderDuration = 0
@@ -674,13 +876,17 @@ function generateBeatmap(
     if (makeSlider) {
       const pointsCount = rng() < 0.62 ? 2 : rng() < 0.86 ? 3 : 4
       const points: Array<{ x: number; y: number }> = [{ x: nextX, y: nextY }]
+      const colorState = takeColorState()
       let anchorX = nextX
       let anchorY = nextY
+      let anchorAngle = placement.angle
       for (let index = 1; index < pointsCount; index += 1) {
-        const dir = rng() * Math.PI * 2
-        const len = 0.12 + rng() * 0.18
-        anchorX = clamp(anchorX + Math.cos(dir) * len, 0.09, 0.91)
-        anchorY = clamp(anchorY + Math.sin(dir) * len, 0.09, 0.91)
+        anchorAngle += (rng() - 0.5) * movement.turnLimit * 0.72
+        const segmentMin = movement.sliderSegment[0]
+        const segmentMax = movement.sliderSegment[1] + intervalFactor * 0.05
+        const length = segmentMin + rng() * Math.max(0.0001, segmentMax - segmentMin)
+        anchorX = clamp(anchorX + Math.cos(anchorAngle) * length, 0.08, 0.92)
+        anchorY = clamp(anchorY + Math.sin(anchorAngle) * length, 0.08, 0.92)
         points.push({ x: anchorX, y: anchorY })
       }
 
@@ -689,22 +895,77 @@ function generateBeatmap(
         tMs: Math.round(snappedTime),
         points,
         durationMs: Math.round(sliderDuration),
+        ...colorState,
       })
       nextAllowedMs = snappedTime + sliderDuration + settings.hit50 + tailBufferMs
+      previousColorIndex = colorState.colorIndex
     } else {
+      const colorState = takeColorState()
       notes.push({
         kind: "circle",
         tMs: Math.round(snappedTime),
         x: nextX,
         y: nextY,
+        ...colorState,
       })
       nextAllowedMs = snappedTime + Math.max(stepMs * 0.82, 92)
+      previousColorIndex = colorState.colorIndex
     }
 
-    const lastPoint = pullPoint(notes[notes.length - 1])
+    const lastNote = notes[notes.length - 1]
+    const lastPoint = pullTailPoint(lastNote)
+    if (lastNote.kind === "slider") {
+      const beforeTail = lastNote.points[lastNote.points.length - 2] ?? lastNote.points[0] ?? { x: prevX, y: prevY }
+      const angle = Math.atan2(lastPoint.y - beforeTail.y, lastPoint.x - beforeTail.x)
+      if (Number.isFinite(angle)) {
+        prevAngle = angle
+      }
+    } else {
+      const angle = Math.atan2(lastPoint.y - prevY, lastPoint.x - prevX)
+      if (Number.isFinite(angle)) {
+        prevAngle = angle
+      }
+    }
     prevX = lastPoint.x
     prevY = lastPoint.y
+    prevSpawnMs = snappedTime
     tMs += stepMs
+  }
+
+  const minimumObjects =
+    difficulty === "easy" ? 18 : difficulty === "normal" ? 12 : difficulty === "hard" ? 8 : difficulty === "extreme" ? 6 : 4
+  if (notes.length < minimumObjects) {
+    const fallbackStep = beatPeriodMs * (difficulty === "easy" ? 1 : difficulty === "normal" ? 0.88 : 0.82)
+    let fallbackMs =
+      notes.length > 0
+        ? Math.max(prevSpawnMs + fallbackStep, FIRST_NOTE_DELAY_MS + beatPeriodMs * 0.45)
+        : Math.max(FIRST_NOTE_DELAY_MS + beatPeriodMs * 0.45, analysis.firstBeatMs)
+    const fallbackFinish = finishMs - settings.hit50
+    const relaxedBeforeMs = restMarginBeforeMs * 0.32
+    const relaxedAfterMs = restMarginAfterMs * 0.32
+    let guard = 0
+
+    while (notes.length < minimumObjects && notes.length < profile.maxNotes && fallbackMs <= fallbackFinish && guard < 900) {
+      if (!isInsideRestIntervalWithMargin(fallbackMs, analysis.restIntervals, relaxedBeforeMs, relaxedAfterMs)) {
+        const intervalMs = Math.max(1, fallbackMs - prevSpawnMs)
+        pushFallbackCircle(fallbackMs, intervalMs)
+      }
+      fallbackMs += fallbackStep
+      guard += 1
+    }
+  }
+
+  if (notes.length === 0) {
+    const hardCap = Math.min(profile.maxNotes, difficulty === "easy" ? 24 : 12)
+    let fallbackMs = FIRST_NOTE_DELAY_MS + beatPeriodMs * 0.4
+    const fallbackFinish = finishMs - settings.hit50
+    let guard = 0
+    while (notes.length < hardCap && fallbackMs <= fallbackFinish && guard < 240) {
+      const intervalMs = Math.max(1, fallbackMs - prevSpawnMs)
+      pushFallbackCircle(fallbackMs, intervalMs)
+      fallbackMs += beatPeriodMs
+      guard += 1
+    }
   }
 
   return notes
@@ -736,9 +997,11 @@ function judgementColor(judgement: Judgement) {
   return "#dc2626"
 }
 
-function circleColorByIndex(index: number) {
-  const group = Math.floor(index / 5)
-  return CIRCLE_COLORS[group % CIRCLE_COLORS.length]
+function circleColorByMeta(index: number, colorIndex?: number) {
+  const fallbackGroup = Math.floor(index / 5)
+  const slot = colorIndex ?? fallbackGroup
+  const normalizedSlot = ((slot % CIRCLE_COLORS.length) + CIRCLE_COLORS.length) % CIRCLE_COLORS.length
+  return CIRCLE_COLORS[normalizedSlot]
 }
 
 function scaleByViewport(width: number, height: number) {
@@ -746,7 +1009,8 @@ function scaleByViewport(width: number, height: number) {
 }
 
 function noteRadiusPx(note: BeatObject, settings: DifficultySettings, width: number, height: number) {
-  return (note.r ?? settings.radiusPx) * scaleByViewport(width, height)
+  const base = (note.r ?? settings.radiusPx) * scaleByViewport(width, height)
+  return base * 1.18
 }
 
 function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
@@ -934,6 +1198,8 @@ export default function OsuLikePage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const pointerRef = useRef<{ x: number; y: number } | null>(null)
   const cursorTrailRef = useRef<Array<{ x: number; y: number; t: number }>>([])
+  const keyboardHitKeysRef = useRef<Set<string>>(new Set())
+  const isKeyboardHitDownRef = useRef(false)
   const isSetupPanelHoveredRef = useRef(false)
   const armingStartedAtRef = useRef(0)
   const isPointerDownRef = useRef(false)
@@ -1261,7 +1527,7 @@ export default function OsuLikePage() {
         const delta = note.tMs - timelineMs
         const approachProgress = note.kind === "slider" && timelineMs > note.tMs ? 0 : clamp(delta / session.settings.approachMs, 0, 1)
         const approachRadius = radius * (1 + approachProgress * 1.8)
-        const color = circleColorByIndex(note.index)
+        const color = circleColorByMeta(note.index, note.colorIndex)
         const sliderPoints =
           note.kind === "slider"
             ? note.points.map((point) => notePosition({ kind: "circle", tMs: note.tMs, x: point.x, y: point.y }, width, height, radius))
@@ -1280,6 +1546,7 @@ export default function OsuLikePage() {
           radius,
           approachRadius,
           color,
+          orderLabel: note.colorOrder ?? note.index + 1,
           sliderPoints,
           sliderProgress,
           sliderBall,
@@ -1337,7 +1604,7 @@ export default function OsuLikePage() {
       score: session.score,
       combo: session.combo,
       maxCombo: session.maxCombo,
-      accuracy: accuracyOf(session.totalHitValue, session.totalObjects),
+      accuracy: accuracyOf(session.totalHitValue, session.judgedCount),
       count300: session.count300,
       count100: session.count100,
       count50: session.count50,
@@ -1373,7 +1640,7 @@ export default function OsuLikePage() {
       stopGameAudio()
       cancelRaf()
 
-      const accuracy = accuracyOf(session.totalHitValue, session.totalObjects)
+      const accuracy = accuracyOf(session.totalHitValue, session.judgedCount)
       const ranking = rankingFromStats(
         accuracy,
         session.count300,
@@ -1431,7 +1698,7 @@ export default function OsuLikePage() {
       note.judged = judgement
       note.judgedAtMs = nowMs
       session.judgedCount += 1
-      session.effects.push({ x: hitX, y: hitY, judgement, startedMs: nowMs, color: circleColorByIndex(note.index) })
+      session.effects.push({ x: hitX, y: hitY, judgement, startedMs: nowMs, color: circleColorByMeta(note.index, note.colorIndex) })
 
       if (judgement === "miss") {
         session.combo = 0
@@ -1470,6 +1737,19 @@ export default function OsuLikePage() {
     const session = gameSessionRef.current
     if (!session || !context) return 0
     return Math.max(0, (context.currentTime - session.startContextTime) * 1000)
+  }, [])
+
+  const getHitPointer = useCallback(() => {
+    if (pointerRef.current) return pointerRef.current
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const fallback = {
+      x: Math.max(0, canvas.clientWidth * 0.5),
+      y: Math.max(0, canvas.clientHeight * 0.5),
+    }
+    pointerRef.current = fallback
+    setCursorPoint({ x: fallback.x, y: fallback.y, visible: true })
+    return fallback
   }, [])
 
   const handleHitAt = useCallback(
@@ -1548,7 +1828,7 @@ export default function OsuLikePage() {
           y: candidate.hitY,
           judgement: "100",
           startedMs: nowMs,
-          color: circleColorByIndex(candidate.note.index),
+          color: circleColorByMeta(candidate.note.index, candidate.note.colorIndex),
         })
         void playHitSound("100")
         return
@@ -1586,7 +1866,7 @@ export default function OsuLikePage() {
           const path = sliderNote.points.map((point) =>
             notePosition({ kind: "circle", tMs: sliderNote.tMs, x: point.x, y: point.y }, width, height, radius),
           )
-          if (isPointerDownRef.current && pointer) {
+          if ((isPointerDownRef.current || isKeyboardHitDownRef.current) && pointer) {
             const nearest = distanceToSlider(pointer.x, pointer.y, path)
             const followTolerance = radius * 0.82
             if (nearest.distance <= radius + followTolerance) {
@@ -1650,6 +1930,8 @@ export default function OsuLikePage() {
     cancelRaf()
     stopGameAudio()
     isPointerDownRef.current = false
+    isKeyboardHitDownRef.current = false
+    keyboardHitKeysRef.current.clear()
     gameSessionRef.current = null
     setCountdownLabel(null)
   }, [cancelRaf, clearArmingTimeout, stopGameAudio])
@@ -1897,6 +2179,11 @@ export default function OsuLikePage() {
   }, [ensureAudioGraph, isPreviewPlaying, selectedTrack, stopPreview])
 
   useEffect(() => {
+    const isHitKey = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase()
+      return event.code === "KeyZ" || event.code === "KeyX" || key === "z" || key === "x"
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
@@ -1911,33 +2198,53 @@ export default function OsuLikePage() {
         }
       }
 
-      const key = event.key.toLowerCase()
-      if ((key === "z" || key === "x") && phase === "playing") {
+      if (isHitKey(event) && phase === "playing") {
         event.preventDefault()
-        const pointer = pointerRef.current
-        if (pointer) {
-          handleHitAt(pointer.x, pointer.y)
+        const hitCode = event.code === "KeyZ" || event.code === "KeyX" ? event.code : event.key.toLowerCase()
+        const heldKeys = keyboardHitKeysRef.current
+        const alreadyPressed = heldKeys.has(hitCode)
+        heldKeys.add(hitCode)
+        isKeyboardHitDownRef.current = true
+        if (!alreadyPressed) {
+          const pointer = getHitPointer()
+          if (pointer) {
+            void handleHitAt(pointer.x, pointer.y)
+          }
         }
       }
     }
 
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (!isHitKey(event)) return
+      const hitCode = event.code === "KeyZ" || event.code === "KeyX" ? event.code : event.key.toLowerCase()
+      keyboardHitKeysRef.current.delete(hitCode)
+      isKeyboardHitDownRef.current = keyboardHitKeysRef.current.size > 0
+    }
+
     window.addEventListener("keydown", handleKeyDown)
+    window.addEventListener("keyup", handleKeyUp)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
+      window.removeEventListener("keyup", handleKeyUp)
     }
-  }, [handleHitAt, pauseGame, phase, restartGame, resumeGame])
+  }, [getHitPointer, handleHitAt, pauseGame, phase, restartGame, resumeGame])
 
   useEffect(() => {
     const releasePointer = () => {
       isPointerDownRef.current = false
     }
+    const releaseAllInput = () => {
+      isPointerDownRef.current = false
+      isKeyboardHitDownRef.current = false
+      keyboardHitKeysRef.current.clear()
+    }
     window.addEventListener("pointerup", releasePointer)
     window.addEventListener("pointercancel", releasePointer)
-    window.addEventListener("blur", releasePointer)
+    window.addEventListener("blur", releaseAllInput)
     return () => {
       window.removeEventListener("pointerup", releasePointer)
       window.removeEventListener("pointercancel", releasePointer)
-      window.removeEventListener("blur", releasePointer)
+      window.removeEventListener("blur", releaseAllInput)
     }
   }, [])
 
@@ -2296,7 +2603,7 @@ export default function OsuLikePage() {
                       stroke="white"
                       strokeWidth={Math.max(2, note.radius * 0.12)}
                     />
-                    <circle cx={note.x} cy={note.y} r={Math.max(2, note.radius * 0.2)} fill="rgba(255,255,255,0.95)" />
+                    <circle cx={note.x} cy={note.y} r={Math.max(2, note.radius * 0.14)} fill="rgba(255,255,255,0.92)" />
                     {note.kind === "slider" && note.sliderPoints && note.sliderPoints.length > 1 && (
                       <circle
                         cx={note.sliderPoints[note.sliderPoints.length - 1]!.x}
@@ -2317,6 +2624,21 @@ export default function OsuLikePage() {
                         strokeWidth={Math.max(1.8, note.radius * 0.08)}
                       />
                     )}
+                    <text
+                      x={note.x}
+                      y={note.y}
+                      fill="rgba(255,255,255,0.99)"
+                      fontSize={Math.max(13, note.radius * 0.8)}
+                      fontWeight="900"
+                      letterSpacing="-0.01em"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      stroke="rgba(12,3,10,0.72)"
+                      strokeWidth={Math.max(1.2, note.radius * 0.1)}
+                      paintOrder="stroke"
+                    >
+                      {note.orderLabel}
+                    </text>
                   </g>
                 ))}
 
