@@ -2,6 +2,7 @@
 import { Analytics } from "@vercel/analytics/next"
 import { Exo_2, JetBrains_Mono, Manrope, Montserrat, Playfair_Display, Playfair_Display_SC } from "next/font/google"
 import { CustomCursor } from "@/components/custom-cursor"
+import { EdgeMenuReturn } from "@/components/edge-menu-return"
 import "./globals.css"
 
 const manrope = Manrope({
@@ -76,6 +77,7 @@ export default function RootLayout({
     >
       <body className="font-sans antialiased">
         <CustomCursor />
+        <EdgeMenuReturn />
         {children}
         <Analytics />
       </body>
