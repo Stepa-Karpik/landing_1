@@ -154,10 +154,6 @@ export default function CraftPage() {
   return (
     <main className="relative isolate min-h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
       <RouteAtmosphere blobs={craftAtmosphereBlobs} />
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute left-[6%] top-0 h-full w-px bg-black/6" />
-        <div className="absolute right-[6%] top-0 h-full w-px bg-black/6" />
-      </div>
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 pb-[clamp(90px,10vh,120px)] pt-[clamp(82px,9vh,116px)]">
         <section className="relative pb-[clamp(88px,10vh,120px)]">

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { MENU_RESTORE_ON_NEXT_VISIT_KEY, MENU_SCROLL_LEFT_STORAGE_KEY } from "@/lib/menu-scroll-state"
 
 const LINES_COUNT = 20
 const LINE_WIDTH = 1
@@ -363,6 +364,18 @@ export default function Page() {
   useEffect(() => {
     const scroller = scrollerRef.current
     if (!scroller) return
+    let initialRestoreScrollLeft = 0
+
+    try {
+      const shouldRestore = window.sessionStorage.getItem(MENU_RESTORE_ON_NEXT_VISIT_KEY) === "1"
+      if (shouldRestore) {
+        window.sessionStorage.removeItem(MENU_RESTORE_ON_NEXT_VISIT_KEY)
+        const savedValue = Number(window.sessionStorage.getItem(MENU_SCROLL_LEFT_STORAGE_KEY) ?? "0")
+        initialRestoreScrollLeft = Number.isFinite(savedValue) ? Math.max(savedValue, 0) : 0
+      }
+    } catch {
+      initialRestoreScrollLeft = 0
+    }
 
     let wheelVelocity = 0
     let maxScrollLeft = 0
@@ -470,6 +483,11 @@ export default function Page() {
       hasUserWheelInput = false
 
       setProgress(nextScrollLeft / Math.max(maxCenteredScroll, 1))
+      try {
+        window.sessionStorage.setItem(MENU_SCROLL_LEFT_STORAGE_KEY, String(nextScrollLeft))
+      } catch {
+        // Ignore storage access errors (private mode/restricted settings).
+      }
 
       const nextTextProgress: Record<number, number> = {}
       for (const index of WORD_FRAME_INDEXES) {
@@ -501,6 +519,9 @@ export default function Page() {
       })
     }
 
+    if (initialRestoreScrollLeft > 0) {
+      scroller.scrollLeft = initialRestoreScrollLeft
+    }
     onScroll()
     scroller.addEventListener("wheel", onWheel, { passive: false })
     scroller.addEventListener("scroll", onScroll, { passive: true })

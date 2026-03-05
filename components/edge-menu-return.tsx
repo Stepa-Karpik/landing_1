@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
+import { MENU_RESTORE_ON_NEXT_VISIT_KEY } from "@/lib/menu-scroll-state"
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)"
 const DESKTOP_POINTER_QUERY = "(hover: hover) and (pointer: fine)"
@@ -50,6 +51,7 @@ export function EdgeMenuReturn() {
       <Link
         href="/"
         aria-label="Return to main menu"
+        onClick={markMenuRestore}
         className="fixed left-3 top-3 z-[120] text-[13px] leading-none text-[#111111] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
       >
         {LEFT_ARROW}
@@ -61,9 +63,10 @@ export function EdgeMenuReturn() {
     <Link
       href="/"
       aria-label="Return to main menu"
-      className="group fixed inset-y-0 left-0 z-[120] block w-[40px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30 hover:bg-[rgba(115,213,255,0.07)]"
+      onClick={markMenuRestore}
+      className="group fixed inset-y-0 left-0 z-[120] block w-[40px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30 hover:bg-[rgba(115, 213, 255, 0.3)]"
       style={{
-        backgroundColor: isHintVisible ? "rgba(115, 213, 255, 0.16)" : "transparent",
+        backgroundColor: isHintVisible ? "rgba(0, 255, 234, 0.3)" : "transparent",
         transition: `background-color 280ms ${EASE}`,
       }}
     >
@@ -76,4 +79,12 @@ export function EdgeMenuReturn() {
       </span>
     </Link>
   )
+}
+
+function markMenuRestore() {
+  try {
+    window.sessionStorage.setItem(MENU_RESTORE_ON_NEXT_VISIT_KEY, "1")
+  } catch {
+    // Ignore storage access errors (private mode/restricted settings).
+  }
 }

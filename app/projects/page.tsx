@@ -292,10 +292,6 @@ export default function ProjectsPage() {
   return (
     <main className="relative isolate min-h-screen bg-[#f6f4ef] text-[#111111] md:h-screen md:overflow-hidden">
       <RouteAtmosphere blobs={resultAtmosphereBlobs} />
-      <div className="pointer-events-none absolute inset-0 z-0 hidden md:block">
-        <div className="absolute left-[6%] top-0 h-full w-px bg-black/6" />
-        <div className="absolute right-[6%] top-0 h-full w-px bg-black/6" />
-      </div>
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-[1380px] flex-col px-5 pb-7 pt-7 md:h-full md:min-h-0 md:px-10 md:pb-9 md:pt-9">
         <section ref={sceneRef} className="relative hidden flex-1 md:block">
