@@ -197,6 +197,13 @@ const BEST_STORAGE_KEY = "landing.osu.best.v1"
 const FIRST_NOTE_DELAY_MS = 2000
 const MISS_STREAK_LIMIT = 5
 const DIFFICULTY_ORDER: Difficulty[] = ["easy", "normal", "hard", "extreme", "legend"]
+const SLIDER_TAIL_BUFFER_MS: Record<Difficulty, number> = {
+  easy: 120,
+  normal: 95,
+  hard: 76,
+  extreme: 58,
+  legend: 45,
+}
 
 const CIRCLE_COLORS = ["#ff5f87", "#6fa8ff", "#78d8a6", "#f6b26b", "#c993ff"] as const
 
@@ -250,6 +257,7 @@ function pullPoint(object: BeatObject) {
 function generateBeatmap(trackId: 1 | 2 | 3, difficulty: Difficulty, durationMs: number): BeatObject[] {
   const settings = DIFFICULTY[difficulty]
   const [minGap, maxGap] = settings.spacing
+  const tailBufferMs = SLIDER_TAIL_BUFFER_MS[difficulty]
   const difficultySeed = { easy: 11, normal: 29, hard: 53, extreme: 79, legend: 101 }[difficulty]
   const rng = createRng(trackId * 937 + difficultySeed)
   const notes: BeatObject[] = []
@@ -260,6 +268,7 @@ function generateBeatmap(trackId: 1 | 2 | 3, difficulty: Difficulty, durationMs:
   let prevY = 0.5
 
   while (tMs < finishMs) {
+    let requiredGapMs = 0
     let nextX = 0.12 + rng() * 0.76
     let nextY = 0.12 + rng() * 0.76
     let guard = 0
@@ -294,6 +303,8 @@ function generateBeatmap(trackId: 1 | 2 | 3, difficulty: Difficulty, durationMs:
         points,
         durationMs: Math.round(sliderDuration),
       })
+      // Next note should not become hittable until slider travel is finished.
+      requiredGapMs = sliderDuration + settings.hit50 + tailBufferMs
     } else {
       notes.push({
         kind: "circle",
@@ -306,7 +317,8 @@ function generateBeatmap(trackId: 1 | 2 | 3, difficulty: Difficulty, durationMs:
     const lastPoint = pullPoint(notes[notes.length - 1])
     prevX = lastPoint.x
     prevY = lastPoint.y
-    const gap = minGap + rng() * (maxGap - minGap)
+    const baseGap = minGap + rng() * (maxGap - minGap)
+    const gap = Math.max(baseGap, requiredGapMs)
     tMs += gap
   }
 
@@ -1430,6 +1442,10 @@ export default function OsuLikePage() {
   }, [])
 
   useEffect(() => {
+    const gameplayVisible =
+      phase === "arming" || phase === "countdown" || phase === "playing" || phase === "paused" || phase === "results"
+    if (!gameplayVisible) return
+
     const resizeCanvas = () => {
       const wrap = canvasWrapRef.current
       const canvas = canvasRef.current
@@ -1437,11 +1453,19 @@ export default function OsuLikePage() {
 
       const rect = wrap.getBoundingClientRect()
       if (rect.width <= 0 || rect.height <= 0) return
-      setFieldSize({ width: rect.width, height: rect.height })
+
+      const width = Math.round(rect.width)
+      const height = Math.round(rect.height)
+      setFieldSize((previous) => {
+        if (previous.width === width && previous.height === height) return previous
+        return { width, height }
+      })
 
       const dpr = clamp(window.devicePixelRatio || 1, 1, 2)
-      canvas.width = Math.round(rect.width * dpr)
-      canvas.height = Math.round(rect.height * dpr)
+      const nextCanvasWidth = Math.round(rect.width * dpr)
+      const nextCanvasHeight = Math.round(rect.height * dpr)
+      if (canvas.width !== nextCanvasWidth) canvas.width = nextCanvasWidth
+      if (canvas.height !== nextCanvasHeight) canvas.height = nextCanvasHeight
       canvas.style.width = `${rect.width}px`
       canvas.style.height = `${rect.height}px`
 
@@ -1452,12 +1476,31 @@ export default function OsuLikePage() {
       context.clearRect(0, 0, rect.width, rect.height)
     }
 
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof window !== "undefined" && "ResizeObserver" in window && canvasWrapRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        resizeCanvas()
+      })
+      resizeObserver.observe(canvasWrapRef.current)
+    }
+
     resizeCanvas()
     window.addEventListener("resize", resizeCanvas)
+    window.addEventListener("orientationchange", resizeCanvas)
+    document.addEventListener("fullscreenchange", resizeCanvas)
+
+    const rafId = window.requestAnimationFrame(() => {
+      resizeCanvas()
+    })
+
     return () => {
+      window.cancelAnimationFrame(rafId)
       window.removeEventListener("resize", resizeCanvas)
+      window.removeEventListener("orientationchange", resizeCanvas)
+      document.removeEventListener("fullscreenchange", resizeCanvas)
+      resizeObserver?.disconnect()
     }
-  }, [])
+  }, [phase])
 
   useEffect(() => {
     return () => {
