@@ -536,11 +536,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [tutorialExiting, setTutorialExiting] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
+  const [stepOneArrowStyle, setStepOneArrowStyle] = useState({ left: 0, top: 0, angle: 180 })
+  const [stepTwoArrowStyle, setStepTwoArrowStyle] = useState({ left: 0, top: 0, angle: -35 })
   const [showMiniGames, setShowMiniGames] = useState(false)
   const [toasts, setToasts] = useState<ToastItem[]>([])
 
   const skipToastForInitialSyncRef = useRef(true)
   const storageLoadedRef = useRef(false)
+  const tutorialStepOneTextRef = useRef<HTMLDivElement | null>(null)
+  const tutorialStepTwoTextRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (storageLoadedRef.current) return
@@ -730,6 +734,58 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       document.body.style.overflow = previousOverflow
     }
   }, [tutorialOpen])
+
+  useEffect(() => {
+    if (!tutorialOpen || tutorialExiting) return
+
+    const updateArrowPositions = () => {
+      if (tutorialStep === 1 && tutorialStepOneTextRef.current) {
+        const rect = tutorialStepOneTextRef.current.getBoundingClientRect()
+        const textPoint = { x: rect.left, y: rect.top + rect.height * 0.55 }
+        const targetPoint = { x: 28, y: window.innerHeight * 0.5 }
+        const middleX = (textPoint.x + targetPoint.x) / 2
+        const middleY = (textPoint.y + targetPoint.y) / 2
+        const angle = (Math.atan2(targetPoint.y - textPoint.y, targetPoint.x - textPoint.x) * 180) / Math.PI
+        setStepOneArrowStyle((previous) => {
+          if (
+            Math.abs(previous.left - middleX) < 0.5 &&
+            Math.abs(previous.top - middleY) < 0.5 &&
+            Math.abs(previous.angle - angle) < 0.2
+          ) {
+            return previous
+          }
+          return { left: middleX, top: middleY, angle }
+        })
+      }
+
+      if (tutorialStep === 2 && tutorialStepTwoTextRef.current) {
+        const rect = tutorialStepTwoTextRef.current.getBoundingClientRect()
+        const textPoint = { x: rect.right, y: rect.top + rect.height * 0.44 }
+        const targetPoint = { x: window.innerWidth - 42, y: 24 }
+        const middleX = (textPoint.x + targetPoint.x) / 2
+        const middleY = (textPoint.y + targetPoint.y) / 2
+        const angle = (Math.atan2(targetPoint.y - textPoint.y, targetPoint.x - textPoint.x) * 180) / Math.PI
+        setStepTwoArrowStyle((previous) => {
+          if (
+            Math.abs(previous.left - middleX) < 0.5 &&
+            Math.abs(previous.top - middleY) < 0.5 &&
+            Math.abs(previous.angle - angle) < 0.2
+          ) {
+            return previous
+          }
+          return { left: middleX, top: middleY, angle }
+        })
+      }
+    }
+
+    const rafId = window.requestAnimationFrame(updateArrowPositions)
+    window.addEventListener("resize", updateArrowPositions)
+
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.removeEventListener("resize", updateArrowPositions)
+    }
+  }, [tutorialExiting, tutorialOpen, tutorialStep])
 
   const siteProgressPercent = useMemo(() => getSiteProgress(data), [data])
   const achievementViews = useMemo(() => getAchievementViews(data, siteProgressPercent), [data, siteProgressPercent])
@@ -947,35 +1003,44 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             )}
 
             {tutorialStep === 1 && (
-              <div className="max-w-[70ch] text-center">
+              <div ref={tutorialStepOneTextRef} className="max-w-[70ch] text-center">
                 <p className="text-[clamp(28px,4.7vw,56px)] leading-[0.94] tracking-[-0.03em]">Кнопка назад находится слева</p>
                 <p className="mt-3 text-sm text-black/62">
                   Каждый заход в блок мы будем ее подсвечивать, чтобы вы не забыли
                 </p>
-                <div className="mt-7 flex items-center justify-center">
-                  <div className="h-[4px] w-[min(42vw,460px)] -translate-x-4 bg-black/44" />
-                  <span className="ml-2 text-[clamp(72px,12vw,180px)] leading-none text-black/76 animate-pulse">←</span>
+                <div
+                  className="pointer-events-none fixed text-[clamp(96px,15vw,230px)] leading-none text-black/74 animate-pulse"
+                  style={{
+                    left: `${stepOneArrowStyle.left}px`,
+                    top: `${stepOneArrowStyle.top}px`,
+                    transform: `translate(-50%, -50%) rotate(${stepOneArrowStyle.angle}deg)`,
+                  }}
+                >
+                  ➜
                 </div>
-                <p className="mt-4 text-[11px] tracking-[0.13em] text-black/56 uppercase">Шаг сменится автоматически</p>
               </div>
             )}
 
             {tutorialStep === 2 && (
-              <div className="max-w-[70ch] text-center">
+              <div ref={tutorialStepTwoTextRef} className="max-w-[70ch] text-center">
                 <p className="text-[clamp(28px,4.7vw,56px)] leading-[0.94] tracking-[-0.03em]">Профиль находится здесь</p>
                 <p className="mt-3 text-sm text-black/62">Там ваш прогресс и достижения</p>
-                <div className="mt-7 flex items-start justify-center">
-                  <div className="h-[4px] w-[min(36vw,420px)] -translate-y-3 rotate-[-22deg] bg-black/44" />
-                  <span className="-ml-1 -mt-12 text-[clamp(72px,12vw,180px)] leading-none text-black/76 animate-pulse">↗</span>
+                <div
+                  className="pointer-events-none fixed text-[clamp(96px,15vw,230px)] leading-none text-black/74 animate-pulse"
+                  style={{
+                    left: `${stepTwoArrowStyle.left}px`,
+                    top: `${stepTwoArrowStyle.top}px`,
+                    transform: `translate(-50%, -50%) rotate(${stepTwoArrowStyle.angle}deg)`,
+                  }}
+                >
+                  ➜
                 </div>
-                <p className="mt-4 text-[11px] tracking-[0.13em] text-black/56 uppercase">Шаг сменится автоматически</p>
               </div>
             )}
 
             {tutorialStep === 3 && (
               <div className="max-w-[70ch] text-center">
                 <p className="text-[clamp(34px,5.8vw,78px)] leading-[0.9] tracking-[-0.04em]">Удачи</p>
-                <p className="mt-6 text-[11px] tracking-[0.13em] text-black/56 uppercase">Переходим на сайт автоматически</p>
               </div>
             )}
           </div>
