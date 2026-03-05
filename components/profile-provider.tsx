@@ -28,6 +28,7 @@ interface ProfileData {
   version: 1
   sessions: number
   profileOpenCount: number
+  tutorialViews: number
   totalSeconds: number
   visitedRoutes: string[]
   routeVisits: Record<string, number>
@@ -122,6 +123,7 @@ const DEFAULT_PROFILE: ProfileData = {
   version: 1,
   sessions: 0,
   profileOpenCount: 0,
+  tutorialViews: 0,
   totalSeconds: 0,
   visitedRoutes: [],
   routeVisits: {},
@@ -219,6 +221,7 @@ function sanitizeProfileData(raw: unknown): ProfileData {
     version: 1,
     sessions: Math.max(0, Number(candidate.sessions ?? 0) || 0),
     profileOpenCount: Math.max(0, Number(candidate.profileOpenCount ?? 0) || 0),
+    tutorialViews: Math.max(0, Number(candidate.tutorialViews ?? 0) || 0),
     totalSeconds: Math.max(0, Number(candidate.totalSeconds ?? 0) || 0),
     visitedRoutes: Array.isArray(candidate.visitedRoutes) ? candidate.visitedRoutes.filter((value): value is string => typeof value === "string") : [],
     routeVisits: candidate.routeVisits && typeof candidate.routeVisits === "object" ? (candidate.routeVisits as Record<string, number>) : {},
@@ -389,6 +392,13 @@ const achievementDefinitions: AchievementDefinition[] = [
     getProgress: (data) => ({ value: data.profileOpenCount, target: 15 }),
   },
   {
+    id: "tutorial-replay",
+    title: "Второй круг",
+    description: "Пройти обучение повторно.",
+    rarity: "rare",
+    getProgress: (data) => ({ value: Math.max(data.tutorialViews - 1, 0), target: 1 }),
+  },
+  {
     id: "sessions-3",
     title: "Возвращение I",
     description: "Зайти на сайт в 3 разных сессиях.",
@@ -523,26 +533,36 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<ProfileData>(DEFAULT_PROFILE)
   const [hydrated, setHydrated] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [tutorialExiting, setTutorialExiting] = useState(false)
+  const [tutorialStep, setTutorialStep] = useState(0)
   const [showMiniGames, setShowMiniGames] = useState(false)
   const [toasts, setToasts] = useState<ToastItem[]>([])
 
   const skipToastForInitialSyncRef = useRef(true)
+  const storageLoadedRef = useRef(false)
 
   useEffect(() => {
+    if (storageLoadedRef.current) return
+    storageLoadedRef.current = true
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY)
-      if (!raw) {
-        setHydrated(true)
-        return
+      const nextData = raw ? sanitizeProfileData(JSON.parse(raw) as unknown) : DEFAULT_PROFILE
+      setData(nextData)
+      if (pathname === "/" && nextData.tutorialViews === 0) {
+        setTutorialStep(0)
+        setTutorialOpen(true)
       }
-      const parsed = JSON.parse(raw) as unknown
-      setData(sanitizeProfileData(parsed))
     } catch {
       setData(DEFAULT_PROFILE)
+      if (pathname === "/") {
+        setTutorialStep(0)
+        setTutorialOpen(true)
+      }
     } finally {
       setHydrated(true)
     }
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     if (!hydrated) return
@@ -696,8 +716,20 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (pathname !== "/") {
       setProfileOpen(false)
       setShowMiniGames(false)
+      setTutorialOpen(false)
+      setTutorialExiting(false)
+      setTutorialStep(0)
     }
   }, [pathname])
+
+  useEffect(() => {
+    if (!tutorialOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [tutorialOpen])
 
   const siteProgressPercent = useMemo(() => getSiteProgress(data), [data])
   const achievementViews = useMemo(() => getAchievementViews(data, siteProgressPercent), [data, siteProgressPercent])
@@ -720,6 +752,39 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setToasts((previous) => previous.filter((toast) => toast.id !== toastId))
     }, 1600)
   }, [])
+
+  const openTutorial = useCallback(() => {
+    setProfileOpen(false)
+    setShowMiniGames(false)
+    setTutorialStep(0)
+    setTutorialExiting(false)
+    setTutorialOpen(true)
+  }, [])
+
+  const completeTutorial = useCallback(() => {
+    setTutorialExiting(true)
+    window.setTimeout(() => {
+      setTutorialOpen(false)
+      setTutorialExiting(false)
+      setTutorialStep(0)
+    }, 460)
+    setData((previous) => ({ ...previous, tutorialViews: previous.tutorialViews + 1 }))
+  }, [])
+
+  useEffect(() => {
+    if (!tutorialOpen || tutorialExiting) return
+    if (tutorialStep === 0) return
+
+    const timer = window.setTimeout(() => {
+      if (tutorialStep >= 3) {
+        completeTutorial()
+        return
+      }
+      setTutorialStep((previous) => previous + 1)
+    }, 3000)
+
+    return () => window.clearTimeout(timer)
+  }, [completeTutorial, tutorialExiting, tutorialOpen, tutorialStep])
 
   useEffect(() => {
     if (!hydrated) return
@@ -846,6 +911,77 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         })}
       </div>
 
+      {isHome && !hydrated && <section data-profile-ui="1" className="fixed inset-0 z-[279] bg-[#f6f4ef]" />}
+
+      {isHome && tutorialOpen && (
+        <section
+          data-profile-ui="1"
+          className={`fixed inset-0 z-[280] bg-[#f6f4ef] text-[#111111] transition-[opacity,filter] duration-500 ${
+            tutorialExiting ? "opacity-0 blur-sm" : "opacity-100 blur-0"
+          }`}
+        >
+          {tutorialStep === 1 && (
+            <div className="pointer-events-none fixed left-3 top-1/2 -translate-y-1/2 text-[12px] tracking-[0.12em] text-black/70 uppercase">
+              ← Назад
+            </div>
+          )}
+
+          {tutorialStep === 2 && (
+            <div className="pointer-events-none fixed right-4 top-4 text-[12px] tracking-[0.12em] text-black/76 uppercase">
+              Профиль
+            </div>
+          )}
+
+          <div className="flex h-full items-center justify-center px-6">
+            {tutorialStep === 0 && (
+              <div className="max-w-[70ch] text-center">
+                <p className="text-[clamp(34px,5.8vw,78px)] leading-[0.9] tracking-[-0.04em]">Возьмешь телефон, детка</p>
+                <button
+                  type="button"
+                  onClick={() => setTutorialStep(1)}
+                  className="mt-8 text-sm tracking-[0.14em] uppercase transition-opacity hover:opacity-65"
+                >
+                  Начнем
+                </button>
+              </div>
+            )}
+
+            {tutorialStep === 1 && (
+              <div className="max-w-[70ch] text-center">
+                <p className="text-[clamp(28px,4.7vw,56px)] leading-[0.94] tracking-[-0.03em]">Кнопка назад находится слева</p>
+                <p className="mt-3 text-sm text-black/62">
+                  Каждый заход в блок мы будем ее подсвечивать, чтобы вы не забыли
+                </p>
+                <div className="mt-7 flex items-center justify-center">
+                  <div className="h-[4px] w-[min(42vw,460px)] -translate-x-4 bg-black/44" />
+                  <span className="ml-2 text-[clamp(72px,12vw,180px)] leading-none text-black/76 animate-pulse">←</span>
+                </div>
+                <p className="mt-4 text-[11px] tracking-[0.13em] text-black/56 uppercase">Шаг сменится автоматически</p>
+              </div>
+            )}
+
+            {tutorialStep === 2 && (
+              <div className="max-w-[70ch] text-center">
+                <p className="text-[clamp(28px,4.7vw,56px)] leading-[0.94] tracking-[-0.03em]">Профиль находится здесь</p>
+                <p className="mt-3 text-sm text-black/62">Там ваш прогресс и достижения</p>
+                <div className="mt-7 flex items-start justify-center">
+                  <div className="h-[4px] w-[min(36vw,420px)] -translate-y-3 rotate-[-22deg] bg-black/44" />
+                  <span className="-ml-1 -mt-12 text-[clamp(72px,12vw,180px)] leading-none text-black/76 animate-pulse">↗</span>
+                </div>
+                <p className="mt-4 text-[11px] tracking-[0.13em] text-black/56 uppercase">Шаг сменится автоматически</p>
+              </div>
+            )}
+
+            {tutorialStep === 3 && (
+              <div className="max-w-[70ch] text-center">
+                <p className="text-[clamp(34px,5.8vw,78px)] leading-[0.9] tracking-[-0.04em]">Удачи</p>
+                <p className="mt-6 text-[11px] tracking-[0.13em] text-black/56 uppercase">Переходим на сайт автоматически</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {isHome && (
         <>
           <button
@@ -932,6 +1068,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
                     </div>
                   )}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => openTutorial()}
+                  className="w-full text-left text-xs tracking-[0.12em] uppercase text-black/78 transition-opacity hover:opacity-65"
+                >
+                  Пройти обучение
+                </button>
               </div>
 
               <div className="mt-4 overflow-y-auto pr-1">
