@@ -528,7 +528,7 @@ export default function WorksPage() {
 
       <section className="relative z-10 mx-auto max-w-[1320px] px-5 pb-10 pt-[clamp(76px,9vh,114px)] md:px-10 md:pb-14">
         <p className="text-[11px] tracking-[0.24em] text-black/54 uppercase">ВЕКТОР / 48 ЧАСОВ</p>
-        <h1 className="mt-4 max-w-[11ch] text-[clamp(46px,8vw,126px)] leading-[0.84] tracking-[-0.05em] uppercase">
+        <h1 className="mt-4 max-w-[11ch] text-[clamp(46px,8vw,126px)] leading-[0.84] tracking-[-0.05em] uppercase" style={{ lineHeight: 1}}>
           ПУТЬ ОТ КЕЙСА К ЗАЩИТЕ
         </h1>
       </section>
