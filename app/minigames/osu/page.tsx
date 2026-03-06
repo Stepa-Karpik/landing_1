@@ -36,7 +36,7 @@ interface TrackTimingAnalysis {
 }
 
 interface TrackAsset {
-  id: 1 | 2 | 3
+  id: number
   title: string
   src: string
   durationMs: number
@@ -45,7 +45,7 @@ interface TrackAsset {
 }
 
 interface BackgroundAsset {
-  id: 1 | 2 | 3
+  id: number
   kind: "video" | "image"
   src: string
 }
@@ -100,7 +100,7 @@ interface HudState {
 
 interface ResultState extends HudState {
   ranking: "SS" | "S" | "A" | "B" | "C" | "D"
-  trackId: 1 | 2 | 3
+  trackId: number
   difficulty: Difficulty
   bestScore: number
   failed: boolean
@@ -116,7 +116,7 @@ interface ActiveSliderState {
 }
 
 interface GameSession {
-  trackId: 1 | 2 | 3
+  trackId: number
   difficulty: Difficulty
   notes: RuntimeNote[]
   settings: DifficultySettings
@@ -142,10 +142,15 @@ interface GameSession {
 
 type BestScoresMap = Record<string, number>
 
-const TRACKS: Array<{ id: 1 | 2 | 3; title: string; src: string }> = [
+const TRACKS: Array<{ id: number; title: string; src: string }> = [
   { id: 1, title: "OSU Track 1", src: "/osu/osu1_music.mp3" },
   { id: 2, title: "OSU Track 2", src: "/osu/osu2_music.mp3" },
   { id: 3, title: "OSU Track 3", src: "/osu/osu3_music.mp3" },
+  { id: 4, title: "OSU Track 4", src: "/osu/osu4_music.mp3" },
+  { id: 5, title: "OSU Track 5", src: "/osu/osu5_music.mp3" },
+  { id: 6, title: "OSU Track 6", src: "/osu/osu6_music.mp3" },
+  { id: 7, title: "OSU Track 7", src: "/osu/osu7_music.mp3" },
+  { id: 8, title: "OSU Track 8", src: "/osu/osu8_music.mp3" },
 ]
 
 const DIFFICULTY: Record<Difficulty, DifficultySettings> = {
@@ -746,7 +751,7 @@ function pickSequentialPoint(
 }
 
 function generateBeatmap(
-  trackId: 1 | 2 | 3,
+  trackId: number,
   difficulty: Difficulty,
   durationMs: number,
   analysis: TrackTimingAnalysis,
@@ -979,7 +984,7 @@ function notePosition(note: BeatObject, width: number, height: number, radiusPx 
   return { x, y }
 }
 
-function bestKey(trackId: 1 | 2 | 3, difficulty: Difficulty) {
+function bestKey(trackId: number, difficulty: Difficulty) {
   return `${trackId}_${difficulty}`
 }
 
@@ -1160,9 +1165,9 @@ export default function OsuLikePage() {
   const [trackAssets, setTrackAssets] = useState<TrackAsset[]>([])
   const [backgroundAssets, setBackgroundAssets] = useState<BackgroundAsset[]>([])
 
-  const [selectedTrackId, setSelectedTrackId] = useState<1 | 2 | 3>(1)
+  const [selectedTrackId, setSelectedTrackId] = useState<number>(1)
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>("easy")
-  const [hoveredTrackId, setHoveredTrackId] = useState<1 | 2 | 3 | null>(null)
+  const [hoveredTrackId, setHoveredTrackId] = useState<number | null>(null)
 
   const [volume, setVolume] = useState(70)
   const [backgroundDim, setBackgroundDim] = useState(38)
@@ -1224,7 +1229,7 @@ export default function OsuLikePage() {
     [backgroundAssets, selectedTrackId],
   )
   const backgroundByTrackId = useMemo(() => {
-    const map = new Map<1 | 2 | 3, BackgroundAsset>()
+    const map = new Map<number, BackgroundAsset>()
     for (const background of backgroundAssets) {
       map.set(background.id, background)
     }
@@ -1459,13 +1464,13 @@ export default function OsuLikePage() {
         }
 
         const loadedBackgrounds: BackgroundAsset[] = []
-        for (let index = 0; index < [1, 2, 3].length; index += 1) {
-          const id = [1, 2, 3][index] as 1 | 2 | 3
-          setLoadingText(`Loading background ${index + 1}/3...`)
+        for (let index = 0; index < TRACKS.length; index += 1) {
+          const id = TRACKS[index]!.id
+          setLoadingText(`Loading background ${index + 1}/${TRACKS.length}...`)
           const videoPath = `/osu/osu_video${id}.mp4`
           if (await urlExists(videoPath)) {
             loadedBackgrounds.push({ id, kind: "video", src: videoPath })
-            pushProgress((index + 1) / 3)
+            pushProgress((index + 1) / TRACKS.length)
             continue
           }
 
@@ -1481,7 +1486,7 @@ export default function OsuLikePage() {
             throw new Error("Assets not found in /osu")
           }
           loadedBackgrounds.push({ id, kind: "image", src: photoPath })
-          pushProgress((index + 1) / 3)
+          pushProgress((index + 1) / TRACKS.length)
         }
 
         if (cancelled) return
@@ -2411,7 +2416,7 @@ export default function OsuLikePage() {
           <section className="rounded-xl border border-red-900/25 bg-red-50/60 p-6 text-red-900">
             <p className="text-sm font-medium">Assets not found in /osu</p>
             <p className="mt-2 text-sm">
-              Check that <code>osu1_music.mp3</code>...<code>osu3_music.mp3</code> and matching backgrounds exist in <code>/osu</code>.
+              Check that <code>osu1_music.mp3</code>...<code>osu8_music.mp3</code> and matching backgrounds exist in <code>/osu</code>.
             </p>
             {errorText && <p className="mt-2 text-xs opacity-75">{errorText}</p>}
           </section>

@@ -6,7 +6,7 @@ export const runtime = "nodejs"
 const ROOT_OSU_DIR = path.join(process.cwd(), "osu")
 
 const ALLOWED_FILES = new Set(
-  [1, 2, 3].flatMap((index) => [
+  [1, 2, 3, 4, 5, 6, 7, 8].flatMap((index) => [
     `osu${index}_music.mp3`,
     `osu_photo${index}.jpg`,
     `osu_photo${index}.jpeg`,
