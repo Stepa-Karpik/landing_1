@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useProfileTracker } from "@/components/profile-provider"
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
@@ -22,6 +22,18 @@ const rarityTextByKey: Record<string, string> = {
   legendary: "Легендарное",
   impossible: "Невозможно",
 }
+
+const miniGames: Array<{ href: string; label: string }> = [
+  { href: "/minigames/tetris", label: "\u0422\u0435\u0442\u0440\u0438\u0441" },
+  { href: "/minigames/dino", label: "\u0414\u0438\u043d\u043e\u0437\u0430\u0432\u0440\u0438\u043a" },
+  { href: "/minigames/minesweeper", label: "\u0421\u0430\u043f\u0435\u0440" },
+  { href: "/minigames/match3", label: "\u0422\u0440\u0438 \u0432 \u0440\u044f\u0434" },
+  { href: "/minigames/snake", label: "\u0417\u043c\u0435\u0439\u043a\u0430" },
+  { href: "/minigames/2048", label: "2048" },
+  { href: "/minigames/breakout", label: "Breakout" },
+  { href: "/minigames/simon", label: "Simon" },
+  { href: "/minigames/osu", label: "OSU-like" },
+]
 
 function formatDuration(totalSeconds: number) {
   const safe = Math.max(0, Math.floor(totalSeconds))
@@ -58,6 +70,7 @@ function ProgressBar({ percent }: { percent: number }) {
 
 export default function ProfilePage() {
   const { data, siteProgressPercent, achievementsProgressPercent, unlockedCount, sortedAchievementViews } = useProfileTracker()
+  const [showMiniGames, setShowMiniGames] = useState(false)
 
   const gamesPlayed = useMemo(
     () => Object.values(data.gameStats).reduce((acc, game) => (game.plays > 0 ? acc + 1 : acc), 0),
@@ -83,21 +96,41 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link
-                href="/minigames/osu"
+              <button
+                type="button"
+                onClick={() => setShowMiniGames((previous) => !previous)}
                 className="rounded-full border border-black/16 bg-white/70 px-3 py-1.5 text-[11px] tracking-[0.12em] uppercase transition-colors hover:bg-white"
               >
-                OSU-like
+                {showMiniGames ? "\u0421\u043a\u0440\u044b\u0442\u044c \u0438\u0433\u0440\u044b" : "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0438\u0433\u0440\u0443"}
+              </button>
+              <Link
+                href="/?tutorial=1"
+                className="rounded-full border border-black/16 bg-white/70 px-3 py-1.5 text-[11px] tracking-[0.12em] uppercase transition-colors hover:bg-white"
+              >
+                {"\u041f\u0435\u0440\u0435\u043f\u0440\u043e\u0439\u0442\u0438 \u043e\u0431\u0443\u0447\u0435\u043d\u0438\u0435"}
               </Link>
               <Link
                 href="/"
                 className="rounded-full border border-black/16 bg-white/70 px-3 py-1.5 text-[11px] tracking-[0.12em] uppercase transition-colors hover:bg-white"
               >
-                На главную
+                {"\u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e"}
               </Link>
             </div>
           </div>
 
+          {showMiniGames && (
+            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {miniGames.map((game) => (
+                <Link
+                  key={game.href}
+                  href={game.href}
+                  className="rounded-xl border border-black/12 bg-white/70 px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white"
+                >
+                  {game.label}
+                </Link>
+              ))}
+            </div>
+          )}
           <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
             <article className="rounded-xl border border-black/10 bg-white/72 p-3.5">
               <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Прогресс сайта</p>

@@ -851,6 +851,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [pathname, hydrated])
 
   useEffect(() => {
+    if (!hydrated || pathname !== "/profile") return
+    setData((previous) => ({ ...previous, profileOpenCount: previous.profileOpenCount + 1 }))
+  }, [hydrated, pathname])
+
+  useEffect(() => {
     if (!hydrated) return
     const timer = window.setTimeout(() => {
       const stackElements = Array.from(document.querySelectorAll<HTMLElement>("[data-stack-id]"))
@@ -953,13 +958,20 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (pathname !== "/") {
-      setProfileOpen(false)
-      setShowMiniGames(false)
       setTutorialOpen(false)
       setTutorialExiting(false)
       setTutorialStep(0)
     }
   }, [pathname])
+
+  useEffect(() => {
+    if (!hydrated || pathname !== "/") return
+    const replayRequested = new URLSearchParams(window.location.search).get("tutorial") === "1"
+    if (!replayRequested) return
+    setTutorialExiting(false)
+    setTutorialStep(0)
+    setTutorialOpen(true)
+  }, [hydrated, pathname])
 
   useEffect(() => {
     if (!tutorialOpen) return
@@ -1045,8 +1057,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const openTutorial = useCallback(() => {
-    setProfileOpen(false)
-    setShowMiniGames(false)
     setTutorialStep(0)
     setTutorialExiting(false)
     setTutorialOpen(true)
@@ -1133,11 +1143,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       pushToast({ title: achievement.title, rarity: achievement.rarity })
     }
   }, [achievementViews, data.unlockedAchievements, hydrated, pushToast])
-
-  const openProfile = () => {
-    setProfileOpen(true)
-    setData((previous) => ({ ...previous, profileOpenCount: previous.profileOpenCount + 1 }))
-  }
 
   const recordGameResult = useCallback((gameId: GameId, payload: GameResultPayload) => {
     setData((previous) => {
@@ -1360,13 +1365,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
       {isHome && (
         <>
-          <button
-            type="button"
-            onClick={openProfile}
+          <Link
+            href="/profile"
             className="fixed right-4 top-4 z-[210] text-sm tracking-[0.08em] text-black uppercase transition-opacity hover:opacity-70"
           >
             Профиль
-          </button>
+          </Link>
 
           {profileOpen && (
             <section
