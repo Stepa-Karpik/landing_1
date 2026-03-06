@@ -11,7 +11,7 @@ import {
 import { useProfileTracker } from "@/components/profile-provider"
 
 type Difficulty = "easy" | "normal" | "hard" | "extreme" | "legend"
-type Phase = "loading" | "menu" | "arming" | "countdown" | "playing" | "paused" | "results" | "error"
+type Phase = "loading" | "menu" | "playing" | "paused" | "results" | "error"
 type Judgement = "300" | "100" | "50" | "miss"
 
 interface DifficultySettings {
@@ -38,6 +38,7 @@ interface TrackTimingAnalysis {
 interface TrackAsset {
   id: number
   title: string
+  artist: string
   src: string
   durationMs: number
   buffer: AudioBuffer
@@ -141,6 +142,12 @@ interface GameSession {
 }
 
 type BestScoresMap = Record<string, number>
+
+interface StartConfirmState {
+  trackId: number
+  difficulty: Difficulty
+  expiresAtMs: number
+}
 
 const TRACKS: Array<{ id: number; title: string; src: string }> = [
   { id: 1, title: "OSU Track 1", src: "/osu/osu1_music.mp3" },
@@ -255,6 +262,16 @@ const DIFFICULTY_THEME: Record<
   },
 }
 
+const RANK_SCALE: ResultState["ranking"][] = ["D", "C", "B", "A", "S", "SS"]
+const RANK_COLORS: Record<ResultState["ranking"], string> = {
+  D: "#ff6868",
+  C: "#ff9a57",
+  B: "#f4d35e",
+  A: "#91e37e",
+  S: "#6fe8e5",
+  SS: "#a68dff",
+}
+
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
 
 function formatTime(ms: number) {
@@ -263,6 +280,155 @@ function formatTime(ms: number) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = String(totalSeconds % 60).padStart(2, "0")
   return `${minutes}:${seconds}`
+}
+
+function polarPoint(cx: number, cy: number, radius: number, angleDeg: number) {
+  const radians = ((angleDeg - 90) * Math.PI) / 180
+  return {
+    x: cx + radius * Math.cos(radians),
+    y: cy + radius * Math.sin(radians),
+  }
+}
+
+function arcPath(cx: number, cy: number, radius: number, startDeg: number, endDeg: number) {
+  const start = polarPoint(cx, cy, radius, startDeg)
+  const end = polarPoint(cx, cy, radius, endDeg)
+  const largeArc = endDeg - startDeg > 180 ? 1 : 0
+  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`
+}
+
+function cleanMetaText(value: string) {
+  return value.replace(/\u0000/g, "").replace(/\s+/g, " ").trim()
+}
+
+function readSynchsafeInt(bytes: Uint8Array, offset: number) {
+  if (offset + 3 >= bytes.length) return 0
+  return (
+    ((bytes[offset] & 0x7f) << 21) |
+    ((bytes[offset + 1] & 0x7f) << 14) |
+    ((bytes[offset + 2] & 0x7f) << 7) |
+    (bytes[offset + 3] & 0x7f)
+  )
+}
+
+function decodeUtf16Bytes(bytes: Uint8Array, bigEndian: boolean) {
+  if (bytes.length < 2) return ""
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  let result = ""
+  for (let index = 0; index + 1 < bytes.length; index += 2) {
+    const code = view.getUint16(index, !bigEndian)
+    if (code === 0) break
+    result += String.fromCharCode(code)
+  }
+  return result
+}
+
+function decodeId3TextFrame(frameData: Uint8Array) {
+  if (frameData.length === 0) return ""
+  const encoding = frameData[0]
+  const payload = frameData.subarray(1)
+  if (payload.length === 0) return ""
+
+  let decoded = ""
+  try {
+    if (encoding === 0) {
+      decoded = new TextDecoder("iso-8859-1").decode(payload)
+    } else if (encoding === 1) {
+      if (payload.length >= 2 && payload[0] === 0xfe && payload[1] === 0xff) {
+        decoded = decodeUtf16Bytes(payload.subarray(2), true)
+      } else if (payload.length >= 2 && payload[0] === 0xff && payload[1] === 0xfe) {
+        decoded = decodeUtf16Bytes(payload.subarray(2), false)
+      } else {
+        decoded = decodeUtf16Bytes(payload, false)
+      }
+    } else if (encoding === 2) {
+      decoded = decodeUtf16Bytes(payload, true)
+    } else {
+      decoded = new TextDecoder("utf-8").decode(payload)
+    }
+  } catch {
+    decoded = new TextDecoder("utf-8").decode(payload)
+  }
+  return cleanMetaText(decoded)
+}
+
+function parseAudioMetadata(fileBuffer: ArrayBuffer, fallbackTitle: string) {
+  const bytes = new Uint8Array(fileBuffer)
+  let title = ""
+  let artist = ""
+
+  if (bytes.length >= 10 && bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) {
+    const version = bytes[3]
+    const flags = bytes[5]
+    const tagSize = readSynchsafeInt(bytes, 6)
+    const tagEnd = Math.min(bytes.length, 10 + tagSize)
+    let offset = 10
+
+    if ((flags & 0x40) !== 0 && offset + 4 <= tagEnd) {
+      if (version === 4) {
+        const extSize = readSynchsafeInt(bytes, offset)
+        offset += Math.max(extSize, 4)
+      } else {
+        const extSize =
+          ((bytes[offset] << 24) >>> 0) |
+          ((bytes[offset + 1] << 16) >>> 0) |
+          ((bytes[offset + 2] << 8) >>> 0) |
+          (bytes[offset + 3] >>> 0)
+        offset += 4 + Math.max(0, extSize)
+      }
+    }
+
+    while (offset + 10 <= tagEnd) {
+      const frameId = String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3])
+      if (!/^[A-Z0-9]{4}$/.test(frameId)) break
+
+      const frameSize =
+        version === 4
+          ? readSynchsafeInt(bytes, offset + 4)
+          : (((bytes[offset + 4] << 24) >>> 0) |
+              ((bytes[offset + 5] << 16) >>> 0) |
+              ((bytes[offset + 6] << 8) >>> 0) |
+              (bytes[offset + 7] >>> 0))
+      if (frameSize <= 0) break
+
+      const frameStart = offset + 10
+      const frameEnd = frameStart + frameSize
+      if (frameEnd > tagEnd) break
+
+      const frameData = bytes.subarray(frameStart, frameEnd)
+      if (frameId === "TIT2" && !title) {
+        title = decodeId3TextFrame(frameData)
+      }
+      if (frameId === "TPE1" && !artist) {
+        artist = decodeId3TextFrame(frameData)
+      }
+
+      offset = frameEnd
+      if (title && artist) break
+    }
+  }
+
+  if ((!title || !artist) && bytes.length >= 128) {
+    const id3v1Start = bytes.length - 128
+    if (bytes[id3v1Start] === 0x54 && bytes[id3v1Start + 1] === 0x41 && bytes[id3v1Start + 2] === 0x47) {
+      try {
+        const decoder = new TextDecoder("iso-8859-1")
+        if (!title) {
+          title = cleanMetaText(decoder.decode(bytes.subarray(id3v1Start + 3, id3v1Start + 33)))
+        }
+        if (!artist) {
+          artist = cleanMetaText(decoder.decode(bytes.subarray(id3v1Start + 33, id3v1Start + 63)))
+        }
+      } catch {
+        // ignore metadata decode failures
+      }
+    }
+  }
+
+  return {
+    title: title || fallbackTitle,
+    artist: artist || "Unknown artist",
+  }
 }
 
 function accuracyOf(totalHitValue: number, judgedObjects: number) {
@@ -1158,7 +1324,7 @@ export default function OsuLikePage() {
   const { recordGameResult } = useProfileTracker()
 
   const [phase, setPhase] = useState<Phase>("loading")
-  const [loadingText, setLoadingText] = useState("Loading assets...")
+  const [loadingText, setLoadingText] = useState("Загрузка медиафайлов...")
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [errorText, setErrorText] = useState("")
 
@@ -1168,15 +1334,16 @@ export default function OsuLikePage() {
   const [selectedTrackId, setSelectedTrackId] = useState<number>(1)
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>("easy")
   const [hoveredTrackId, setHoveredTrackId] = useState<number | null>(null)
+  const [startConfirm, setStartConfirm] = useState<StartConfirmState | null>(null)
+  const [startConfirmMsLeft, setStartConfirmMsLeft] = useState(0)
 
   const [volume, setVolume] = useState(70)
   const [backgroundDim, setBackgroundDim] = useState(38)
   const [showHud, setShowHud] = useState(true)
   const [reduceMotion, setReduceMotion] = useState(false)
-  const [isSetupPanelHovered, setIsSetupPanelHovered] = useState(false)
 
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false)
-  const [countdownLabel, setCountdownLabel] = useState<string | null>(null)
+  const [previewTrackId, setPreviewTrackId] = useState<number | null>(null)
 
   const [hud, setHud] = useState<HudState>({
     score: 0,
@@ -1205,8 +1372,6 @@ export default function OsuLikePage() {
   const cursorTrailRef = useRef<Array<{ x: number; y: number; t: number }>>([])
   const keyboardHitKeysRef = useRef<Set<string>>(new Set())
   const isKeyboardHitDownRef = useRef(false)
-  const isSetupPanelHoveredRef = useRef(false)
-  const armingStartedAtRef = useRef(0)
   const isPointerDownRef = useRef(false)
 
   const audioCtxRef = useRef<AudioContext | null>(null)
@@ -1219,6 +1384,8 @@ export default function OsuLikePage() {
   const rafRef = useRef<number | null>(null)
   const countdownTimeoutsRef = useRef<number[]>([])
   const armingTimeoutRef = useRef<number | null>(null)
+  const startConfirmTimeoutRef = useRef<number | null>(null)
+  const startConfirmTickRef = useRef<number | null>(null)
 
   const selectedTrack = useMemo(
     () => trackAssets.find((track) => track.id === selectedTrackId) ?? null,
@@ -1235,7 +1402,6 @@ export default function OsuLikePage() {
     }
     return map
   }, [backgroundAssets])
-  const difficultyConfig = DIFFICULTY[selectedDifficulty]
 
   const ensureAudioGraph = useCallback(async () => {
     if (audioCtxRef.current && musicGainRef.current && hitGainRef.current) {
@@ -1276,6 +1442,17 @@ export default function OsuLikePage() {
     }
   }, [])
 
+  const clearStartConfirmTimers = useCallback(() => {
+    if (startConfirmTimeoutRef.current !== null) {
+      window.clearTimeout(startConfirmTimeoutRef.current)
+      startConfirmTimeoutRef.current = null
+    }
+    if (startConfirmTickRef.current !== null) {
+      window.clearInterval(startConfirmTickRef.current)
+      startConfirmTickRef.current = null
+    }
+  }, [])
+
   const cancelRaf = useCallback(() => {
     if (rafRef.current !== null) {
       window.cancelAnimationFrame(rafRef.current)
@@ -1302,6 +1479,7 @@ export default function OsuLikePage() {
     stopBufferSource(previewSourceRef.current)
     previewSourceRef.current = null
     setIsPreviewPlaying(false)
+    setPreviewTrackId(null)
   }, [stopBufferSource])
 
   const stopGameAudio = useCallback(() => {
@@ -1328,14 +1506,7 @@ export default function OsuLikePage() {
   }, [phase])
 
   useEffect(() => {
-    const mode =
-      phase === "playing" || phase === "countdown"
-        ? "game"
-        : phase === "arming"
-          ? isSetupPanelHovered
-            ? "panel"
-            : "game"
-          : null
+    const mode = phase === "playing" ? "game" : null
 
     if (mode) {
       document.body.setAttribute("data-osu-cursor-mode", mode)
@@ -1345,10 +1516,10 @@ export default function OsuLikePage() {
     return () => {
       document.body.removeAttribute("data-osu-cursor-mode")
     }
-  }, [isSetupPanelHovered, phase])
+  }, [phase])
 
   useEffect(() => {
-    const gameplayCursor = phase === "playing" || phase === "countdown" || phase === "arming"
+    const gameplayCursor = phase === "playing"
     if (!gameplayCursor) {
       cursorTrailRef.current = []
       setCursorTrail([])
@@ -1400,7 +1571,7 @@ export default function OsuLikePage() {
 
     const load = async () => {
       try {
-        setLoadingText("Preparing audio engine...")
+        setLoadingText("Подготовка аудиодвижка...")
         setLoadingProgress(2)
         const context = await ensureAudioGraph()
 
@@ -1433,7 +1604,7 @@ export default function OsuLikePage() {
 
         for (let index = 0; index < TRACKS.length; index += 1) {
           const track = TRACKS[index]
-          setLoadingText(`Loading ${track.title}...`)
+          setLoadingText("Загрузка медиафайлов...")
           const fileBuffer = await fetchArrayBufferWithProgress(track.src, (loaded, total) => {
             if (total > 0) {
               totalBytesByTrack[index] = total
@@ -1447,15 +1618,17 @@ export default function OsuLikePage() {
           }
           pushProgress()
 
-          setLoadingText(`Decoding ${track.title}...`)
+          setLoadingText("Обработка аудио...")
           const decoded = await context.decodeAudioData(fileBuffer.slice(0))
-          setLoadingText(`Analyzing rhythm of ${track.title}...`)
+          const metadata = parseAudioMetadata(fileBuffer, track.title)
+          setLoadingText("Анализ ритма...")
           const analysis = await analyzeTrackTiming(decoded)
           analyzedTracksCount += 1
           pushProgress()
           loadedTracks.push({
             id: track.id,
-            title: track.title,
+            title: metadata.title,
+            artist: metadata.artist,
             src: track.src,
             durationMs: decoded.duration * 1000,
             buffer: decoded,
@@ -1466,7 +1639,7 @@ export default function OsuLikePage() {
         const loadedBackgrounds: BackgroundAsset[] = []
         for (let index = 0; index < TRACKS.length; index += 1) {
           const id = TRACKS[index]!.id
-          setLoadingText(`Loading background ${index + 1}/${TRACKS.length}...`)
+          setLoadingText("Загрузка фонов...")
           const videoPath = `/osu/osu_video${id}.mp4`
           if (await urlExists(videoPath)) {
             loadedBackgrounds.push({ id, kind: "video", src: videoPath })
@@ -1490,7 +1663,7 @@ export default function OsuLikePage() {
         }
 
         if (cancelled) return
-        setLoadingText("Finalizing...")
+        setLoadingText("Финализация...")
         setLoadingProgress(100)
         setTrackAssets(loadedTracks)
         setBackgroundAssets(loadedBackgrounds)
@@ -1510,7 +1683,7 @@ export default function OsuLikePage() {
 
   const visualNotes = useMemo(() => {
     const session = gameSessionRef.current
-    if (!session || (phase !== "playing" && phase !== "countdown" && phase !== "paused")) return []
+    if (!session || (phase !== "playing" && phase !== "paused")) return []
 
     const width = Math.max(fieldSize.width, 1)
     const height = Math.max(fieldSize.height, 1)
@@ -1946,7 +2119,6 @@ export default function OsuLikePage() {
     isKeyboardHitDownRef.current = false
     keyboardHitKeysRef.current.clear()
     gameSessionRef.current = null
-    setCountdownLabel(null)
   }, [cancelRaf, clearArmingTimeout, stopGameAudio])
 
   const enterFullscreen = useCallback(async () => {
@@ -1968,14 +2140,16 @@ export default function OsuLikePage() {
     }
   }, [])
 
-  const startGameNow = useCallback(async () => {
-    if (!selectedTrack) return
+  const startGameNow = useCallback(async (forcedTrack?: TrackAsset, forcedDifficulty?: Difficulty) => {
+    const track = forcedTrack ?? selectedTrack
+    const difficulty = forcedDifficulty ?? selectedDifficulty
+    if (!track) return
     const context = await ensureAudioGraph()
     if (context.state === "suspended") {
       await context.resume()
     }
 
-    const beatmap = generateBeatmap(selectedTrack.id, selectedDifficulty, selectedTrack.durationMs, selectedTrack.analysis)
+    const beatmap = generateBeatmap(track.id, difficulty, track.durationMs, track.analysis)
     const runtimeNotes: RuntimeNote[] = beatmap.map((note, index) => ({
       ...note,
       index,
@@ -1984,17 +2158,17 @@ export default function OsuLikePage() {
     }))
 
     const source = context.createBufferSource()
-    source.buffer = selectedTrack.buffer
+    source.buffer = track.buffer
     source.connect(musicGainRef.current!)
     const startContextTime = context.currentTime + 0.02
     source.start(startContextTime, 0)
     gameSourceRef.current = source
 
     const session: GameSession = {
-      trackId: selectedTrack.id,
-      difficulty: selectedDifficulty,
+      trackId: track.id,
+      difficulty,
       notes: runtimeNotes,
-      settings: DIFFICULTY[selectedDifficulty],
+      settings: DIFFICULTY[difficulty],
       source,
       startContextTime,
       pausedOffsetMs: 0,
@@ -2043,67 +2217,76 @@ export default function OsuLikePage() {
     })
   }, [ensureAudioGraph, pushResult, rafTick, selectedDifficulty, selectedTrack])
 
-  const kickoffCountdown = useCallback(() => {
-    clearArmingTimeout()
-    clearCountdownTimeouts()
-    setCountdownLabel("3")
-    phaseRef.current = "countdown"
-    setPhase("countdown")
+  const cancelStartConfirm = useCallback(() => {
+    clearStartConfirmTimers()
+    setStartConfirm(null)
+    setStartConfirmMsLeft(0)
+  }, [clearStartConfirmTimers])
 
-    const steps: Array<{ at: number; label: string; start?: boolean }> = [
-      { at: 1000, label: "2" },
-      { at: 2000, label: "1" },
-      { at: 3000, label: "GO", start: true },
-      { at: 3700, label: "" },
-    ]
+  const launchGame = useCallback(
+    async (trackId: number, difficulty: Difficulty) => {
+      const track = trackAssets.find((item) => item.id === trackId)
+      if (!track) return
 
-    for (const step of steps) {
-      const timeoutId = window.setTimeout(() => {
-        setCountdownLabel(step.label || null)
-        if (step.start) {
-          startGameNow()
-        }
-      }, step.at)
-      countdownTimeoutsRef.current.push(timeoutId)
-    }
-  }, [clearArmingTimeout, clearCountdownTimeouts, startGameNow])
+      cancelStartConfirm()
+      stopPreview()
+      stopGame()
+      clearCountdownTimeouts()
+      clearArmingTimeout()
+      setSelectedTrackId(trackId)
+      setSelectedDifficulty(difficulty)
+      await enterFullscreen()
+      await startGameNow(track, difficulty)
+    },
+    [cancelStartConfirm, clearArmingTimeout, clearCountdownTimeouts, enterFullscreen, startGameNow, stopGame, stopPreview, trackAssets],
+  )
 
-  const scheduleArmingAutoStart = useCallback(() => {
-    clearArmingTimeout()
-    if (phaseRef.current !== "arming") return
-    if (isSetupPanelHoveredRef.current) return
+  const confirmStartNow = useCallback(() => {
+    if (!startConfirm) return
+    const { trackId, difficulty } = startConfirm
+    void launchGame(trackId, difficulty)
+  }, [launchGame, startConfirm])
 
-    const elapsed = performance.now() - armingStartedAtRef.current
-    const delayMs = Math.max(0, 2000 - elapsed)
-    armingTimeoutRef.current = window.setTimeout(() => {
-      if (phaseRef.current !== "arming") return
-      if (isSetupPanelHoveredRef.current) return
-      kickoffCountdown()
-    }, delayMs)
-  }, [clearArmingTimeout, kickoffCountdown])
+  const openStartConfirm = useCallback(
+    (trackId: number, difficulty: Difficulty) => {
+      stopPreview()
+      clearStartConfirmTimers()
 
-  const beginArming = useCallback(async () => {
-    if (!selectedTrack) return
-    await enterFullscreen()
-    stopPreview()
-    stopGame()
-    clearCountdownTimeouts()
-    clearArmingTimeout()
-    setCountdownLabel(null)
-    setIsSetupPanelHovered(false)
-    isSetupPanelHoveredRef.current = false
-    armingStartedAtRef.current = performance.now()
-    phaseRef.current = "arming"
-    setPhase("arming")
-  }, [clearArmingTimeout, clearCountdownTimeouts, enterFullscreen, selectedTrack, stopGame, stopPreview])
+      const expiresAtMs = performance.now() + 3000
+      setSelectedTrackId(trackId)
+      setSelectedDifficulty(difficulty)
+      setStartConfirm({ trackId, difficulty, expiresAtMs })
+      setStartConfirmMsLeft(3000)
+
+      startConfirmTimeoutRef.current = window.setTimeout(() => {
+        void launchGame(trackId, difficulty)
+      }, 3000)
+
+      startConfirmTickRef.current = window.setInterval(() => {
+        setStartConfirmMsLeft(Math.max(0, Math.ceil(expiresAtMs - performance.now())))
+      }, 40)
+    },
+    [clearStartConfirmTimers, launchGame, stopPreview],
+  )
 
   useEffect(() => {
-    if (phase !== "arming") {
-      clearArmingTimeout()
-      return
+    if (!startConfirm) return
+    const handleConfirmKeys = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        cancelStartConfirm()
+        return
+      }
+      if (event.key === "Enter") {
+        event.preventDefault()
+        confirmStartNow()
+      }
     }
-    scheduleArmingAutoStart()
-  }, [clearArmingTimeout, isSetupPanelHovered, phase, scheduleArmingAutoStart])
+    window.addEventListener("keydown", handleConfirmKeys)
+    return () => {
+      window.removeEventListener("keydown", handleConfirmKeys)
+    }
+  }, [cancelStartConfirm, confirmStartNow, startConfirm])
 
   const pauseGame = useCallback(() => {
     if (phase !== "playing") return
@@ -2155,21 +2338,25 @@ export default function OsuLikePage() {
   }, [ensureAudioGraph, phase, pushResult, rafTick, trackAssets])
 
   const restartGame = useCallback(() => {
-    beginArming()
-  }, [beginArming])
+    const active = gameSessionRef.current
+    const nextTrackId = active?.trackId ?? selectedTrackId
+    const nextDifficulty = active?.difficulty ?? selectedDifficulty
+    void launchGame(nextTrackId, nextDifficulty)
+  }, [launchGame, selectedDifficulty, selectedTrackId])
 
   const backToMenu = useCallback(() => {
+    cancelStartConfirm()
+    stopPreview()
     clearCountdownTimeouts()
     stopGame()
     setResult(null)
     phaseRef.current = "menu"
     setPhase("menu")
     void exitFullscreen()
-  }, [clearCountdownTimeouts, exitFullscreen, stopGame])
+  }, [cancelStartConfirm, clearCountdownTimeouts, exitFullscreen, stopGame, stopPreview])
 
-  const togglePreview = useCallback(async () => {
-    if (!selectedTrack) return
-    if (isPreviewPlaying) {
+  const togglePreviewForTrack = useCallback(async (track: TrackAsset) => {
+    if (isPreviewPlaying && previewTrackId === track.id) {
       stopPreview()
       return
     }
@@ -2181,15 +2368,26 @@ export default function OsuLikePage() {
 
     stopPreview()
     const source = context.createBufferSource()
-    source.buffer = selectedTrack.buffer
+    source.buffer = track.buffer
     source.connect(musicGainRef.current!)
-    source.loop = true
-    source.loopStart = 0
-    source.loopEnd = Math.min(selectedTrack.buffer.duration, 24)
-    source.start()
+    const middleSec = clamp(track.buffer.duration * 0.5, 0, Math.max(0, track.buffer.duration - 0.08))
+    const loopEndSec = Math.min(track.buffer.duration, middleSec + 24)
+    if (loopEndSec - middleSec > 0.36) {
+      source.loop = true
+      source.loopStart = middleSec
+      source.loopEnd = loopEndSec
+    }
+    source.onended = () => {
+      if (previewSourceRef.current !== source) return
+      previewSourceRef.current = null
+      setIsPreviewPlaying(false)
+      setPreviewTrackId(null)
+    }
+    source.start(0, middleSec)
     previewSourceRef.current = source
     setIsPreviewPlaying(true)
-  }, [ensureAudioGraph, isPreviewPlaying, selectedTrack, stopPreview])
+    setPreviewTrackId(track.id)
+  }, [ensureAudioGraph, isPreviewPlaying, previewTrackId, stopPreview])
 
   useEffect(() => {
     const isHitKey = (event: KeyboardEvent) => {
@@ -2263,7 +2461,7 @@ export default function OsuLikePage() {
 
   useEffect(() => {
     const gameplayVisible =
-      phase === "arming" || phase === "countdown" || phase === "playing" || phase === "paused" || phase === "results"
+      phase === "playing" || phase === "paused" || phase === "results"
     if (!gameplayVisible) return
 
     const resizeCanvas = () => {
@@ -2326,6 +2524,7 @@ export default function OsuLikePage() {
     return () => {
       clearArmingTimeout()
       clearCountdownTimeouts()
+      clearStartConfirmTimers()
       cancelRaf()
       stopPreview()
       stopGameAudio()
@@ -2341,7 +2540,7 @@ export default function OsuLikePage() {
         })
       }
     }
-  }, [cancelRaf, clearArmingTimeout, clearCountdownTimeouts, stopGameAudio, stopPreview])
+  }, [cancelRaf, clearArmingTimeout, clearCountdownTimeouts, clearStartConfirmTimers, stopGameAudio, stopPreview])
 
   const onCanvasPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     event.preventDefault()
@@ -2352,14 +2551,6 @@ export default function OsuLikePage() {
     pointerRef.current = { x, y }
     setCursorPoint({ x, y, visible: true })
     cursorTrailRef.current.push({ x, y, t: performance.now() })
-
-    if (phase === "arming") {
-      const centerHit = x > rect.width * 0.22 && x < rect.width * 0.78 && y > rect.height * 0.2 && y < rect.height * 0.8
-      if (!isSetupPanelHoveredRef.current && centerHit) {
-        kickoffCountdown()
-      }
-      return
-    }
 
     if (phase === "playing") {
       handleHitAt(x, y)
@@ -2383,20 +2574,33 @@ export default function OsuLikePage() {
     isPointerDownRef.current = false
   }
 
-  const difficultyLabel = difficultyConfig ? selectedDifficulty.toUpperCase() : "EASY"
-  const bestForCurrent = bestScores[bestKey(selectedTrackId, selectedDifficulty)] ?? 0
-  const menuBackgroundStyle =
-    phase === "menu"
-      ? { background: "linear-gradient(145deg, #d9f6ec 0%, #f7dcec 68%, #fbe5ef 100%)" }
-      : undefined
+  const pendingStartTrack = startConfirm ? trackAssets.find((track) => track.id === startConfirm.trackId) ?? null : null
+  const pendingStartBackground =
+    startConfirm && pendingStartTrack ? backgroundByTrackId.get(startConfirm.trackId) ?? null : null
+  const pendingStartBest =
+    startConfirm && pendingStartTrack ? bestScores[bestKey(startConfirm.trackId, startConfirm.difficulty)] ?? 0 : 0
+  const resultRankIndex = result ? RANK_SCALE.indexOf(result.ranking) : -1
+  const selectionStage = phase === "menu" || phase === "loading"
+  const menuBackgroundStyle = selectionStage
+    ? {
+        backgroundColor: "#03060d",
+        backgroundImage:
+          "radial-gradient(circle at 22% 16%, rgba(139, 31, 68, 0.34), transparent 42%), radial-gradient(circle at 82% 11%, rgba(28, 129, 178, 0.24), transparent 44%), linear-gradient(145deg, #03060d 0%, #040912 56%, #050b16 100%)",
+      }
+    : undefined
 
   return (
-    <main className="min-h-screen px-4 pb-8 pt-20 text-[#111111] md:px-8" style={menuBackgroundStyle}>
+    <main className="relative min-h-screen overflow-hidden px-4 pb-8 pt-20 text-[#111111] md:px-8" style={menuBackgroundStyle}>
+      {selectionStage && (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_30%,rgba(255,255,255,0.08),transparent_40%)]" />
+        </>
+      )}
       <div className="mx-auto max-w-[1400px]">
         {phase === "loading" && (
           <section className="flex min-h-[72vh] items-center justify-center">
             <div className="w-full max-w-xl rounded-2xl border border-[#ce9fb6]/50 bg-[#fff2f8]/72 p-6 shadow-[0_22px_80px_rgba(97,35,64,0.16)] backdrop-blur">
-              <p className="text-[11px] tracking-[0.14em] text-[#6f5361] uppercase">Loading OSU Assets</p>
+              <p className="text-[11px] tracking-[0.14em] text-[#6f5361] uppercase">Загрузка</p>
               <p className="mt-2 text-sm text-[#5f4653]">{loadingText}</p>
               <div className="mt-4 h-4 overflow-hidden rounded-full border border-[#d39ebb]/60 bg-white/65">
                 <div
@@ -2406,7 +2610,7 @@ export default function OsuLikePage() {
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-[#6e5162]">
                 <span>{Math.round(clamp(loadingProgress, 0, 100))}%</span>
-                <span>{loadingProgress < 100 ? "Please wait..." : "Ready"}</span>
+                <span>{loadingProgress < 100 ? "Подождите..." : "Готово"}</span>
               </div>
             </div>
           </section>
@@ -2423,49 +2627,65 @@ export default function OsuLikePage() {
         )}
 
         {phase === "menu" && (
-          <section className="space-y-3">
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="min-w-[220px] flex-1">
-                <label className="flex items-center justify-between text-[11px] tracking-[0.12em] text-[#355047] uppercase">
-                  <span>Volume</span>
-                  <span>{volume}</span>
-                </label>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={volume}
-                  onChange={(event) => setVolume(Number(event.target.value))}
-                  className="mt-2 w-full accent-[#ff6ea5]"
-                />
+          <section className="relative space-y-4">
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/20 bg-white/[0.06] px-4 py-3 text-white backdrop-blur-sm">
+              <div className="inline-flex items-center gap-2">
+                <span className="text-[11px] tracking-[0.12em] text-white/75 uppercase">Volume</span>
+                <div className="inline-flex items-center overflow-hidden rounded-lg border border-white/28 bg-black/24">
+                  <button
+                    type="button"
+                    onClick={() => setVolume((previous) => clamp(previous - 5, 0, 100))}
+                    className="px-3 py-1 text-sm text-white/90 transition-colors hover:bg-white/16"
+                    aria-label="Decrease volume"
+                  >
+                    -
+                  </button>
+                  <span className="min-w-[56px] border-x border-white/22 px-3 py-1 text-center text-xs font-semibold text-white">{volume}%</span>
+                  <button
+                    type="button"
+                    onClick={() => setVolume((previous) => clamp(previous + 5, 0, 100))}
+                    className="px-3 py-1 text-sm text-white/90 transition-colors hover:bg-white/16"
+                    aria-label="Increase volume"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-
-              <button
-                type="button"
-                onClick={togglePreview}
-                className="rounded-lg border border-[#7aa39a]/45 bg-white/62 px-4 py-2 text-xs tracking-[0.12em] text-[#2d4740] uppercase transition-colors hover:bg-white"
-              >
-                {isPreviewPlaying ? "Stop preview" : "Preview"}
-              </button>
-
-              <button
-                type="button"
-                onClick={beginArming}
-                className="rounded-lg border border-[#c66693]/50 bg-[#ff6fa3] px-4 py-2 text-xs tracking-[0.12em] text-white uppercase transition-opacity hover:opacity-90"
-              >
-                Start
-              </button>
+              <div className="inline-flex items-center gap-2">
+                <span className="text-[11px] tracking-[0.12em] text-white/75 uppercase">Dim</span>
+                <div className="inline-flex items-center overflow-hidden rounded-lg border border-white/28 bg-black/24">
+                  <button
+                    type="button"
+                    onClick={() => setBackgroundDim((previous) => clamp(previous - 5, 0, 100))}
+                    className="px-3 py-1 text-sm text-white/90 transition-colors hover:bg-white/16"
+                    aria-label="Decrease background dim"
+                  >
+                    -
+                  </button>
+                  <span className="min-w-[56px] border-x border-white/22 px-3 py-1 text-center text-xs font-semibold text-white">{backgroundDim}%</span>
+                  <button
+                    type="button"
+                    onClick={() => setBackgroundDim((previous) => clamp(previous + 5, 0, 100))}
+                    className="px-3 py-1 text-sm text-white/90 transition-colors hover:bg-white/16"
+                    aria-label="Increase background dim"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <p className="text-[11px] tracking-[0.12em] text-[#5a726a] uppercase">
-              Selected: {selectedTrack?.title ?? "Track"} / {difficultyLabel} / best {bestForCurrent}
-            </p>
 
             <div className="space-y-3">
               {trackAssets.map((track) => {
-                const expanded = hoveredTrackId === track.id || selectedTrackId === track.id
+                const expanded = hoveredTrackId === track.id
                 const selected = selectedTrackId === track.id
                 const trackBackground = backgroundByTrackId.get(track.id) ?? null
+                const trackBest = DIFFICULTY_ORDER.reduce((currentBest, difficulty) => {
+                  const value = bestScores[bestKey(track.id, difficulty)] ?? 0
+                  return Math.max(currentBest, value)
+                }, 0)
+                const previewActive = isPreviewPlaying && previewTrackId === track.id
+
                 return (
                   <article
                     key={track.id}
@@ -2473,46 +2693,62 @@ export default function OsuLikePage() {
                     onMouseLeave={() => setHoveredTrackId(null)}
                     className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
                       selected
-                        ? "border-[#e08aad]/70 bg-[#2f2742] text-white shadow-[0_14px_35px_rgba(58,17,37,0.3)]"
-                        : "border-[#7ea79f]/45 bg-[#33485a] text-white/95"
+                        ? "border-[#ff9fc5]/72 bg-[#2a2941]/86 text-white shadow-[0_14px_35px_rgba(36,11,31,0.4)]"
+                        : "border-white/22 bg-[#212c42]/74 text-white/95"
                     }`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (track.id !== selectedTrackId && isPreviewPlaying) {
-                          stopPreview()
-                        }
-                        setSelectedTrackId(track.id)
-                      }}
-                      className="w-full px-3 py-3 text-left"
-                    >
-                      <div className="flex items-stretch gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`h-2.5 w-2.5 rounded-full ${selected ? "bg-[#ff8bbb]" : "bg-[#8be5c7]"}`} />
-                            <p className="truncate text-[clamp(20px,2.6vw,34px)] font-semibold leading-none tracking-[-0.02em]">
-                              {track.title}
-                            </p>
-                          </div>
-                          <p className="mt-1 text-sm text-white/82">{formatTime(track.durationMs)}</p>
-                          <p className="mt-1 text-[11px] tracking-[0.12em] text-white/75 uppercase">
-                            {selected ? "Selected mapset" : "Mapset"} - {DIFFICULTY[selectedDifficulty].star}*
+                    <div className="flex items-stretch gap-3 px-3 py-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          cancelStartConfirm()
+                          setSelectedTrackId(track.id)
+                        }}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2.5 w-2.5 rounded-full ${selected ? "bg-[#ff8bbb]" : "bg-[#8be5c7]"}`} />
+                          <p className="truncate text-[clamp(20px,2.6vw,34px)] font-semibold leading-none tracking-[-0.02em]">
+                            {track.title}
                           </p>
                         </div>
+                        <p className="mt-1 truncate text-xs text-white/74">{track.artist}</p>
+                        <p className="mt-1 text-[11px] tracking-[0.12em] text-white/76 uppercase">
+                          {formatTime(track.durationMs)} - best {trackBest}
+                        </p>
+                      </button>
 
-                        <div className="relative hidden h-24 w-44 shrink-0 overflow-hidden rounded-xl border border-white/35 bg-black/25 sm:block">
-                          {trackBackground?.kind === "video" && (
-                            <video src={trackBackground.src} className="h-full w-full object-cover" muted loop autoPlay playsInline />
-                          )}
-                          {trackBackground?.kind === "image" && (
-                            <img src={trackBackground.src} alt={`${track.title} cover`} className="h-full w-full object-cover" />
-                          )}
-                          {!trackBackground && <div className="h-full w-full bg-[#283f43]" />}
-                          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(130deg,rgba(9,7,14,0.1)_0%,rgba(9,7,14,0.44)_100%)]" />
-                        </div>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          cancelStartConfirm()
+                          setSelectedTrackId(track.id)
+                          void togglePreviewForTrack(track)
+                        }}
+                        className={`group flex h-24 w-16 shrink-0 items-center justify-center rounded-xl border transition-colors ${
+                          previewActive
+                            ? "border-[#ff9cc6]/85 bg-[#ff9cc6]/24 text-[#ffd8ea]"
+                            : "border-white/32 bg-black/24 text-white/78 hover:bg-white/10"
+                        }`}
+                        aria-label={`Preview ${track.title}`}
+                      >
+                        <svg viewBox="0 0 48 48" className="h-8 w-8" fill="currentColor" aria-hidden="true">
+                          <path d="M16 9v20.9a6.4 6.4 0 1 1-2.7-5.2V11.6l19-4.5v18.2a6.4 6.4 0 1 1-2.7-5.2V10.4L16 13.7Z" />
+                        </svg>
+                      </button>
+
+                      <div className="relative hidden h-24 w-44 shrink-0 overflow-hidden rounded-xl border border-white/35 bg-black/25 sm:block">
+                        {trackBackground?.kind === "video" && (
+                          <video src={trackBackground.src} className="h-full w-full object-cover" muted loop autoPlay playsInline />
+                        )}
+                        {trackBackground?.kind === "image" && (
+                          <img src={trackBackground.src} alt={`${track.title} cover`} className="h-full w-full object-cover" />
+                        )}
+                        {!trackBackground && <div className="h-full w-full bg-[#283f43]" />}
+                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(130deg,rgba(9,7,14,0.08)_0%,rgba(9,7,14,0.5)_100%)]" />
                       </div>
-                    </button>
+                    </div>
 
                     <div
                       className={`overflow-hidden transition-[max-height,opacity,margin] duration-300 ${
@@ -2530,11 +2766,12 @@ export default function OsuLikePage() {
                               key={`${track.id}-${difficulty}`}
                               type="button"
                               onClick={() => {
-                                if (track.id !== selectedTrackId && isPreviewPlaying) {
-                                  stopPreview()
-                                }
+                                cancelStartConfirm()
                                 setSelectedTrackId(track.id)
                                 setSelectedDifficulty(difficulty)
+                              }}
+                              onDoubleClick={() => {
+                                openStartConfirm(track.id, difficulty)
                               }}
                               className="flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left transition-transform hover:scale-[1.01]"
                               style={{
@@ -2558,10 +2795,64 @@ export default function OsuLikePage() {
                 )
               })}
             </div>
+
+            {startConfirm && pendingStartTrack && (
+              <div
+                className="fixed inset-0 z-[120] flex items-center justify-center bg-black/74 p-4 backdrop-blur-[4px]"
+                onClick={confirmStartNow}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  confirmStartNow()
+                }}
+              >
+                <div className="w-full max-w-2xl rounded-2xl border border-white/28 bg-[#101827]/82 p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.65)] backdrop-blur-md">
+                  <p className="text-[11px] tracking-[0.15em] text-white/68 uppercase">Press Enter / Click / Right click</p>
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                    <div className="relative h-28 w-full overflow-hidden rounded-xl border border-white/26 bg-black/30 sm:w-60">
+                      {pendingStartBackground?.kind === "video" && (
+                        <video src={pendingStartBackground.src} className="h-full w-full object-cover" muted loop autoPlay playsInline />
+                      )}
+                      {pendingStartBackground?.kind === "image" && (
+                        <img src={pendingStartBackground.src} alt={`${pendingStartTrack.title} cover`} className="h-full w-full object-cover" />
+                      )}
+                      {!pendingStartBackground && <div className="h-full w-full bg-[#21263a]" />}
+                      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(130deg,rgba(4,7,12,0.08)_0%,rgba(4,7,12,0.52)_100%)]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-2xl font-semibold tracking-[-0.02em]">{pendingStartTrack.title}</p>
+                      <p className="mt-1 truncate text-sm text-white/74">{pendingStartTrack.artist}</p>
+                      <p className="mt-2 text-xs text-white/80">
+                        {formatTime(pendingStartTrack.durationMs)} - {startConfirm.difficulty.toUpperCase()} - Best {pendingStartBest}
+                      </p>
+                      <p className="mt-2 text-xs tracking-[0.12em] text-white/70 uppercase">
+                        Auto start in {Math.max(0, Math.ceil(startConfirmMsLeft / 1000))}s
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        cancelStartConfirm()
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        cancelStartConfirm()
+                      }}
+                      className="rounded-lg border border-white/36 bg-white/10 px-3 py-1.5 text-xs tracking-[0.12em] text-white/88 uppercase hover:bg-white/16"
+                    >
+                      Cancel (Esc)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
-        {(phase === "arming" || phase === "countdown" || phase === "playing" || phase === "paused" || phase === "results") && (
+        {(phase === "playing" || phase === "paused" || phase === "results") && (
           <section ref={gameplayRootRef} className="fixed inset-0 z-[80] h-[100dvh] overflow-hidden bg-[#140914]">
             <div ref={canvasWrapRef} className="relative h-full w-full overflow-hidden bg-black">
               {selectedBackground?.kind === "video" && (
@@ -2575,11 +2866,7 @@ export default function OsuLikePage() {
 
               <canvas
                 ref={canvasRef}
-                className={`absolute inset-0 z-10 h-full w-full touch-none ${
-                  phase === "playing" || phase === "countdown" || (phase === "arming" && !isSetupPanelHovered)
-                    ? "cursor-none"
-                    : ""
-                }`}
+                className={`absolute inset-0 z-10 h-full w-full touch-none ${phase === "playing" ? "cursor-none" : ""}`}
                 onPointerDown={onCanvasPointerDown}
                 onPointerMove={onCanvasPointerMove}
                 onPointerUp={onCanvasPointerUp}
@@ -2679,7 +2966,7 @@ export default function OsuLikePage() {
                 ))}
               </svg>
 
-              {(phase === "playing" || phase === "countdown" || (phase === "arming" && !isSetupPanelHovered)) && (
+              {phase === "playing" && (
                 <div className="pointer-events-none absolute inset-0 z-40">
                   {cursorTrail.map((point, index) => {
                     const age = performance.now() - point.t
@@ -2724,7 +3011,7 @@ export default function OsuLikePage() {
                 </div>
               )}
 
-              {(phase === "playing" || phase === "paused" || phase === "countdown") && (
+              {(phase === "playing" || phase === "paused") && (
                 <div className="pointer-events-none absolute bottom-4 left-4 z-30 text-white">
                   <p className="text-[clamp(30px,4vw,52px)] font-black leading-none tracking-[-0.02em] drop-shadow-[0_5px_14px_rgba(0,0,0,0.45)]">
                     X{hud.combo}
@@ -2741,10 +3028,10 @@ export default function OsuLikePage() {
                 <div className="pointer-events-none absolute inset-x-0 bottom-8 z-30 flex justify-center px-4">
                   <div className="relative w-[min(78vw,960px)]">
                     <div className="absolute -left-16 top-1/2 -translate-y-1/2 text-[54px] leading-none text-white/70 drop-shadow-[0_0_14px_rgba(255,255,255,0.7)]">
-                      ‹
+                      {"<"}
                     </div>
                     <div className="absolute -right-16 top-1/2 -translate-y-1/2 text-[54px] leading-none text-white/70 drop-shadow-[0_0_14px_rgba(255,255,255,0.7)]">
-                      ›
+                      {">"}
                     </div>
 
                     <div className="h-3 overflow-hidden rounded-full border border-white/55 bg-white/18 shadow-[0_0_30px_rgba(255,255,255,0.2)] backdrop-blur-[1px]">
@@ -2769,92 +3056,6 @@ export default function OsuLikePage() {
                 </div>
               )}
 
-              {countdownLabel && (
-                <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
-                  <p className="text-[clamp(44px,11vw,120px)] font-semibold tracking-[-0.03em] text-white drop-shadow-[0_8px_28px_rgba(0,0,0,0.35)]">
-                    {countdownLabel}
-                  </p>
-                </div>
-              )}
-
-              {phase === "arming" && (
-                <>
-                  <div className="pointer-events-none absolute inset-0 z-[35] bg-black/15" />
-
-                  <div className="pointer-events-none absolute inset-0 z-[36] flex items-center justify-center px-6">
-                    <div className="rounded-2xl border border-white/30 bg-[#ffddea]/16 px-6 py-4 text-center text-white backdrop-blur-sm">
-                      <p className="text-xs tracking-[0.14em] uppercase text-white/80">Ready</p>
-                      <p className="mt-2 text-2xl font-semibold tracking-[-0.02em]">Click center to begin</p>
-                    </div>
-                  </div>
-
-                  <aside
-                    onPointerEnter={() => {
-                      isSetupPanelHoveredRef.current = true
-                      setIsSetupPanelHovered(true)
-                    }}
-                    onPointerLeave={() => {
-                      isSetupPanelHoveredRef.current = false
-                      setIsSetupPanelHovered(false)
-                    }}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    className="absolute inset-y-4 right-4 z-50 flex w-[min(320px,92vw)] flex-col gap-3 rounded-2xl border border-white/35 bg-[#ffe7f2]/18 p-4 text-white backdrop-blur-md"
-                  >
-                    <div className="rounded-lg border border-white/30 bg-black/18 p-3">
-                      <p className="text-[10px] tracking-[0.14em] uppercase text-white/70">Start setup</p>
-                      <p className="mt-1 text-sm">
-                        {selectedTrack?.title ?? "Track"} / {selectedDifficulty}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="flex items-center justify-between text-[10px] tracking-[0.12em] uppercase text-white/80">
-                        <span>Volume</span>
-                        <span>{volume}</span>
-                      </label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={volume}
-                        onChange={(event) => setVolume(Number(event.target.value))}
-                        className="mt-1.5 w-full accent-[#ff79af]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="flex items-center justify-between text-[10px] tracking-[0.12em] uppercase text-white/80">
-                        <span>Background dim</span>
-                        <span>{backgroundDim}%</span>
-                      </label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={backgroundDim}
-                        onChange={(event) => setBackgroundDim(Number(event.target.value))}
-                        className="mt-1.5 w-full accent-[#ff79af]"
-                      />
-                    </div>
-
-                    <label className="flex items-center justify-between rounded-md border border-white/30 bg-black/16 px-3 py-2">
-                      <span className="text-[10px] tracking-[0.12em] uppercase">Show HUD</span>
-                      <input type="checkbox" checked={showHud} onChange={(event) => setShowHud(event.target.checked)} className="h-4 w-4 accent-[#ff79af]" />
-                    </label>
-
-                    <label className="flex items-center justify-between rounded-md border border-white/30 bg-black/16 px-3 py-2">
-                      <span className="text-[10px] tracking-[0.12em] uppercase">Reduce motion</span>
-                      <input
-                        type="checkbox"
-                        checked={reduceMotion}
-                        onChange={(event) => setReduceMotion(event.target.checked)}
-                        className="h-4 w-4 accent-[#ff79af]"
-                      />
-                    </label>
-
-                  </aside>
-                </>
-              )}
 
               {phase === "paused" && (
                 <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#2b0f1e]/55 p-4">
@@ -2878,33 +3079,137 @@ export default function OsuLikePage() {
 
               {phase === "results" && result && (
                 <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#180914]/58 p-4 backdrop-blur-[2px]">
-                  <div
-                    className={`w-full max-w-md rounded-lg border border-[#f8bfd8]/45 bg-[#f9d8e7]/28 p-4 text-[#fff6fb] backdrop-blur transition-all duration-500 ${
-                      resultVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-95 opacity-0"
-                    }`}
-                  >
-                    <p className="text-[11px] tracking-[0.15em] text-[#ffe8f3] uppercase">Result</p>
-                    <h2 className="mt-1 text-3xl font-semibold tracking-[-0.02em]">Rank {result.ranking}</h2>
-                    {result.failed && <p className="mt-1 text-sm text-[#ffd6ea]">Failed: 5 misses in a row.</p>}
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                      <p>Score: {result.score}</p>
-                      <p>Best: {result.bestScore}</p>
-                      <p>Accuracy: {result.accuracy.toFixed(2)}%</p>
-                      <p>Max Combo: {result.maxCombo}</p>
-                      <p>300: {result.count300}</p>
-                      <p>100: {result.count100}</p>
-                      <p>50: {result.count50}</p>
-                      <p>Miss: {result.countMiss}</p>
+                  {result.failed ? (
+                    <div
+                      className={`w-full max-w-md rounded-2xl border border-[#ff95a4]/45 bg-[#2b1022]/75 p-5 text-[#ffeef4] shadow-[0_20px_64px_rgba(0,0,0,0.45)] backdrop-blur transition-all duration-500 ${
+                        resultVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-95 opacity-0"
+                      }`}
+                    >
+                      <p className="text-[11px] tracking-[0.15em] text-[#ffbacb] uppercase">Поражение</p>
+                      <h2 className="mt-1 text-3xl font-semibold tracking-[-0.02em] text-[#ffd4de]">Серия промахов</h2>
+                      <p className="mt-2 text-sm text-[#ffd8e2]/90">Допущено 5 промахов подряд. Попробуйте еще раз.</p>
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                        <p>Очки: {result.score}</p>
+                        <p>Рекорд: {result.bestScore}</p>
+                        <p>Точность: {result.accuracy.toFixed(2)}%</p>
+                        <p>Макс. комбо: {result.maxCombo}</p>
+                        <p>300: {result.count300}</p>
+                        <p>100: {result.count100}</p>
+                        <p>50: {result.count50}</p>
+                        <p>Miss: {result.countMiss}</p>
+                      </div>
+                      <div className="mt-5 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={restartGame}
+                          className="rounded-xl border border-[#ffb1c3]/70 bg-[#ff7ca5]/28 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#ff7ca5]/38"
+                        >
+                          Рестарт
+                        </button>
+                        <button
+                          type="button"
+                          onClick={backToMenu}
+                          className="rounded-xl border border-[#ffd6ea]/55 bg-[#ffd6ea]/18 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#ffd6ea]/28"
+                        >
+                          Меню
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <button type="button" onClick={restartGame} className="rounded-md border border-[#ffd6ea]/55 bg-[#ffd6ea]/28 px-3 py-2 text-xs uppercase">
-                        Retry
-                      </button>
-                      <button type="button" onClick={backToMenu} className="rounded-md border border-[#ffd6ea]/55 bg-[#ffd6ea]/20 px-3 py-2 text-xs uppercase">
-                        Back to menu
-                      </button>
+                  ) : (
+                    <div
+                      className={`w-full max-w-lg rounded-2xl border border-[#b8d4ff]/30 bg-[#0d1424]/82 p-5 text-[#e9f1ff] shadow-[0_20px_64px_rgba(0,0,0,0.55)] backdrop-blur transition-all duration-500 ${
+                        resultVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-95 opacity-0"
+                      }`}
+                    >
+                      <p className="text-[11px] tracking-[0.15em] text-[#9ec5ff] uppercase">Результат</p>
+                      <div className="mt-3 flex justify-center">
+                        <div className="relative h-[290px] w-[290px]">
+                          <svg viewBox="0 0 100 100" className="h-full w-full">
+                            <circle cx="50" cy="50" r="37" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="10" />
+                            {RANK_SCALE.map((rank, index) => {
+                              const segment = 360 / RANK_SCALE.length
+                              const gap = 5
+                              const start = index * segment + gap * 0.5
+                              const end = (index + 1) * segment - gap * 0.5
+                              const active = index === resultRankIndex
+                              return (
+                                <path
+                                  key={rank}
+                                  d={arcPath(50, 50, 37, start, end)}
+                                  fill="none"
+                                  stroke={RANK_COLORS[rank]}
+                                  strokeWidth={active ? 10.5 : 9}
+                                  strokeLinecap="round"
+                                  opacity={active ? 1 : 0.46}
+                                  style={active ? { filter: `drop-shadow(0 0 7px ${RANK_COLORS[rank]})` } : undefined}
+                                />
+                              )
+                            })}
+                            {RANK_SCALE.map((rank, index) => {
+                              const angle = (index + 0.5) * (360 / RANK_SCALE.length)
+                              const point = polarPoint(50, 50, 46, angle)
+                              return (
+                                <text
+                                  key={`${rank}-label`}
+                                  x={point.x}
+                                  y={point.y}
+                                  fill={RANK_COLORS[rank]}
+                                  fontSize="4.4"
+                                  fontWeight={index === resultRankIndex ? "800" : "700"}
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                  opacity={index === resultRankIndex ? 1 : 0.75}
+                                >
+                                  {rank}
+                                </text>
+                              )
+                            })}
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div
+                              className="flex h-[148px] w-[148px] items-center justify-center rounded-full border text-[64px] font-semibold tracking-[-0.02em]"
+                              style={{
+                                borderColor: `${RANK_COLORS[result.ranking]}bb`,
+                                color: RANK_COLORS[result.ranking],
+                                background: "radial-gradient(circle at 50% 40%, rgba(16,22,38,0.95) 0%, rgba(10,15,27,0.98) 100%)",
+                                boxShadow: `0 0 30px ${RANK_COLORS[result.ranking]}33, inset 0 0 24px rgba(255,255,255,0.06)`,
+                              }}
+                            >
+                              {result.ranking}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="mt-1 text-center text-[52px] font-light leading-none tracking-[-0.02em]">{result.score}</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <p>Точность: {result.accuracy.toFixed(2)}%</p>
+                        <p>Макс. комбо: {result.maxCombo}</p>
+                        <p>300: {result.count300}</p>
+                        <p>100: {result.count100}</p>
+                        <p>50: {result.count50}</p>
+                        <p>Miss: {result.countMiss}</p>
+                        <p>Сложность: {result.difficulty.toUpperCase()}</p>
+                        <p>Рекорд: {result.bestScore}</p>
+                      </div>
+                      <div className="mt-5 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={restartGame}
+                          className="rounded-xl border border-[#8ec5ff]/65 bg-[#57a8ff]/26 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#57a8ff]/36"
+                        >
+                          Рестарт
+                        </button>
+                        <button
+                          type="button"
+                          onClick={backToMenu}
+                          className="rounded-xl border border-[#9fcbff]/55 bg-[#9fcbff]/16 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#9fcbff]/28"
+                        >
+                          Меню
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2914,3 +3219,4 @@ export default function OsuLikePage() {
     </main>
   )
 }
+
