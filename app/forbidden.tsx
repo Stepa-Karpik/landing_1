@@ -22,7 +22,9 @@ export default function ForbiddenPage() {
 
       <div className="relative z-10 mt-0 grid w-full max-w-[1800px] items-center gap-8 pt-[clamp(4px,3vh,36px)] lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className="flex min-h-[clamp(260px,60vh,760px)] flex-col justify-end">
-          <h1 className="font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">403</h1>
+          <h1 className="-translate-y-[clamp(90px,14vh,220px)] font-brand text-[clamp(170px,33vw,590px)] leading-[0.7] tracking-[-0.07em] text-[#e2bc8f]">
+            403
+          </h1>
           <p className="mt-6 max-w-[34ch] font-playfair text-[clamp(22px,3vw,44px)] leading-[1.06] text-black">
             Что же я хочу сказать? Тебе сюда нельзя!
           </p>
@@ -30,7 +32,7 @@ export default function ForbiddenPage() {
 
         <div className="relative mx-auto h-[clamp(300px,72vh,980px)] w-[clamp(300px,72vh,980px)] overflow-visible rounded-full lg:mx-0">
           <video
-            className="h-full w-full object-cover"
+            className="h-full w-full rounded-full object-cover object-[30%_50%]"
             src="/handlers/403.mp4"
             autoPlay
             muted

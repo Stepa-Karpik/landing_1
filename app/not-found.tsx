@@ -23,7 +23,7 @@ export default function NotFound() {
       <div className="relative z-10 mt-0 flex w-full max-w-[1800px] items-start justify-center pt-[clamp(4px,3vh,36px)]">
         <div className="relative h-[clamp(300px,72vh,980px)] w-[clamp(300px,72vh,980px)] overflow-visible rounded-full">
           <video
-            className="h-full w-full object-cover"
+            className="h-full w-full rounded-full object-cover"
             src="/handlers/404.mp4"
             autoPlay
             muted
@@ -31,10 +31,10 @@ export default function NotFound() {
             playsInline
             preload="auto"
           />
-          <span className="pointer-events-none absolute top-1/2 left-0 z-20 -translate-x-[34%] -translate-y-1/2 font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
+          <span className="pointer-events-none absolute top-[35%] left-0 z-20 -translate-x-[34%] -translate-y-1/2 font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
             4
           </span>
-          <span className="pointer-events-none absolute top-1/2 right-0 z-20 translate-x-[34%] -translate-y-1/2 font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
+          <span className="pointer-events-none absolute top-[35%] right-0 z-20 translate-x-[34%] -translate-y-1/2 font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
             4
           </span>
         </div>
