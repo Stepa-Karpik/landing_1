@@ -115,6 +115,12 @@ export default function ProfilePage() {
               >
                 {"\u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e"}
               </Link>
+              <Link
+                href="/403"
+                className="rounded-full border border-[#8f1d1f]/40 bg-[#fff0f0]/85 px-3 py-1.5 text-[11px] tracking-[0.12em] text-[#7a1517] uppercase transition-colors hover:bg-[#ffe5e6]"
+              >
+                {"\u0410\u0434\u043c\u0438\u043d-\u043f\u0430\u043d\u0435\u043b\u044c"}
+              </Link>
             </div>
           </div>
 
