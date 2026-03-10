@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { motion, useInView } from "framer-motion"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
@@ -73,7 +73,6 @@ const competencyTags = [
   "GraphQL",
   "Nano Banana",
   "Coroutines",
-  "HTML5",
   "Flask",
   "Illustrator",
   "Retrofit",
@@ -101,7 +100,6 @@ const stackDirections: StackDirection[] = [
       "TypeScript",
       "Next.js",
       "Vite",
-      "HTML5",
       "CSS3",
       "SASS",
       "Tailwind CSS",

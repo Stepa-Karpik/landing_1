@@ -96,7 +96,7 @@ const teamPeople: PersonCard[] = [
     focus: "Держит производительность Android-части, выстраивает чистую архитектуру и снижает риски на релизе.",
     stack: "Kotlin · Android · Jetpack Compose · Coroutines · Retrofit ·",
     quote: "Стабильность важнее случайной скорости.",
-    photoSrc: "/media/Mihajlov.jpg",
+    photoSrc: "/media/Mihajlov.png",
     telegramUrl: "https://t.me/rimmtyr",
   },
   {
