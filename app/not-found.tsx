@@ -20,12 +20,8 @@ export default function NotFound() {
         <div className="route-ambient right-[6%] bottom-[8%] h-[clamp(320px,40vw,660px)] w-[clamp(320px,40vw,660px)] bg-[#ffd7ad]/28" />
       </div>
 
-      <div className="relative z-10 mt-0 flex w-full max-w-[1800px] items-start justify-center gap-[clamp(4px,1vw,20px)] pt-[clamp(4px,3vh,36px)]">
-        <span className="font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
-          4
-        </span>
-
-        <div className="relative h-[clamp(300px,72vh,980px)] w-[clamp(300px,72vh,980px)] overflow-hidden rounded-full">
+      <div className="relative z-10 mt-0 flex w-full max-w-[1800px] items-start justify-center pt-[clamp(4px,3vh,36px)]">
+        <div className="relative h-[clamp(300px,72vh,980px)] w-[clamp(300px,72vh,980px)] overflow-visible rounded-full">
           <video
             className="h-full w-full object-cover"
             src="/handlers/404.mp4"
@@ -35,17 +31,19 @@ export default function NotFound() {
             playsInline
             preload="auto"
           />
+          <span className="pointer-events-none absolute top-1/2 left-0 z-20 -translate-x-[34%] -translate-y-1/2 font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
+            4
+          </span>
+          <span className="pointer-events-none absolute top-1/2 right-0 z-20 translate-x-[34%] -translate-y-1/2 font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
+            4
+          </span>
         </div>
-
-        <span className="font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
-          4
-        </span>
       </div>
 
       <button
         type="button"
         onClick={handleBack}
-        className="liquid-button relative z-10 mt-8 rounded-full px-8 py-3 text-sm tracking-[0.2em] text-white/90 uppercase"
+        className="relative z-10 mt-8 rounded-full border border-black/28 bg-white/66 px-8 py-3 text-sm tracking-[0.2em] text-black/90 uppercase backdrop-blur-md transition-colors hover:bg-white/82"
       >
         Вернуться
       </button>

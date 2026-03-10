@@ -20,12 +20,15 @@ export default function ForbiddenPage() {
         <div className="route-ambient right-[3%] bottom-[8%] h-[clamp(300px,36vw,620px)] w-[clamp(300px,36vw,620px)] bg-[#9cdcff]/22" />
       </div>
 
-      <div className="relative z-10 mt-0 flex w-full max-w-[1800px] items-start justify-center gap-[clamp(4px,1vw,20px)] pt-[clamp(4px,3vh,36px)]">
-        <span className="font-brand text-[clamp(140px,28vw,480px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
-          4
-        </span>
+      <div className="relative z-10 mt-0 grid w-full max-w-[1800px] items-center gap-8 pt-[clamp(4px,3vh,36px)] lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="flex min-h-[clamp(260px,60vh,760px)] flex-col justify-end">
+          <h1 className="font-brand text-[clamp(150px,30vw,520px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">403</h1>
+          <p className="mt-6 max-w-[34ch] font-playfair text-[clamp(22px,3vw,44px)] leading-[1.06] text-black">
+            Что же я хочу сказать? Тебе сюда нельзя!
+          </p>
+        </div>
 
-        <div className="relative h-[clamp(300px,72vh,980px)] w-[clamp(300px,72vh,980px)] overflow-hidden rounded-full">
+        <div className="relative mx-auto h-[clamp(300px,72vh,980px)] w-[clamp(300px,72vh,980px)] overflow-visible rounded-full lg:mx-0">
           <video
             className="h-full w-full object-cover"
             src="/handlers/403.mp4"
@@ -35,24 +38,15 @@ export default function ForbiddenPage() {
             playsInline
             preload="auto"
           />
+          <button
+            type="button"
+            onClick={handleBack}
+            className="absolute top-[75%] left-1/2 z-20 -translate-x-1/2 rounded-full border border-black/28 bg-white/66 px-8 py-3 text-sm tracking-[0.2em] text-black/90 uppercase backdrop-blur-md transition-colors hover:bg-white/82"
+          >
+            Вернуться
+          </button>
         </div>
-
-        <span className="font-brand text-[clamp(140px,28vw,480px)] leading-[0.72] tracking-[-0.07em] text-[#e2bc8f]">
-          3
-        </span>
       </div>
-
-      <p className="relative z-10 mt-6 mr-auto max-w-[34ch] font-playfair text-[clamp(22px,3vw,44px)] leading-[1.06] text-black">
-        Что же я хочу сказать? Тебе сюда нельзя!
-      </p>
-
-      <button
-        type="button"
-        onClick={handleBack}
-        className="liquid-button relative z-10 mt-8 rounded-full px-8 py-3 text-sm tracking-[0.2em] text-white/90 uppercase"
-      >
-        Вернуться
-      </button>
     </main>
   )
 }
