@@ -10,9 +10,9 @@ const PLAYER_X = 146
 
 const BASE_SPEED = 360
 const MAX_SPEED = 1350
-const SPEED_PER_SCORE = 0.34
-const SCORE_BASE_RATE = 92
-const SCORE_SPEED_RATE = 0.13
+const SPEED_PER_SCORE = 0.12
+const SCORE_BASE_RATE = 38
+const SCORE_SPEED_RATE = 0.05
 
 const JUMP_VELOCITY = -930
 const GRAVITY = 2850
@@ -559,7 +559,7 @@ export default function DinoPage() {
 
         <section className="rounded-lg border border-black/12 bg-white/55 p-3">
           <p className="mb-2 text-[11px] tracking-[0.16em] text-black/64 uppercase">Скины</p>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+          <div className="flex flex-wrap gap-2">
             {SKINS.map((skin) => {
               const unlocked = bestScore >= skin.unlockScore
               const isSelected = selectedSkinId === skin.id
@@ -572,7 +572,7 @@ export default function DinoPage() {
                     if (!unlocked) return
                     setSelectedSkinId(skin.id)
                   }}
-                  className={`relative aspect-square rounded-md border bg-[#f9f7f2] transition-all ${
+                  className={`relative h-12 w-12 rounded-md border bg-[#f9f7f2] transition-all sm:h-14 sm:w-14 ${
                     isSelected
                       ? "border-black shadow-[0_0_0_2px_rgba(17,17,17,0.15)]"
                       : "border-black/18 hover:border-black/36"
@@ -582,7 +582,7 @@ export default function DinoPage() {
                     src={skin.src}
                     alt=""
                     draggable={false}
-                    className={`h-full w-full object-contain p-2 ${unlocked ? "" : "blur-[2.5px] opacity-40"}`}
+                    className={`h-full w-full object-contain p-1.5 ${unlocked ? "" : "blur-[6px] opacity-35"}`}
                   />
                   {!unlocked && (
                     <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-black">

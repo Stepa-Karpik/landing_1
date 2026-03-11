@@ -130,7 +130,7 @@ const OSU_DIFFICULTIES: readonly OsuDifficulty[] = ["easy", "normal", "hard", "e
 
 const miniGames: ReadonlyArray<{ id: GameId; label: string; href: (typeof GAME_ROUTES)[number]; goal: string }> = [
   { id: "tetris", label: "Тетрис", href: "/minigames/tetris", goal: "700 очков" },
-  { id: "dino", label: "Динозаврик", href: "/minigames/dino", goal: "600 очков" },
+  { id: "dino", label: "\u0414\u0438\u043d\u043e\u0437\u0430\u0432\u0440\u0438\u043a", href: "/minigames/dino", goal: "\u0432\u0441\u0435 \u0441\u043a\u0438\u043d\u044b" },
   { id: "minesweeper", label: "Сапер", href: "/minigames/minesweeper", goal: "1 победа" },
   { id: "match3", label: "Три в ряд", href: "/minigames/match3", goal: "450 очков" },
   { id: "snake", label: "Змейка", href: "/minigames/snake", goal: "40 очков" },
@@ -570,6 +570,13 @@ const achievementDefinitions: AchievementDefinition[] = [
     },
   },
   {
+    id: "dino-enter",
+    title: "\u0447\u0442\u043e \u0442\u0443\u0442 \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0434\u0438\u0442",
+    description: "\u0417\u0430\u0439\u0442\u0438 \u0432 \u043c\u0438\u043d\u0438-\u0438\u0433\u0440\u0443 \u00ab\u0414\u0438\u043d\u043e\u0437\u0430\u0432\u0440\u0438\u043a\u00bb.",
+    rarity: "common",
+    getProgress: (data) => ({ value: data.visitedRoutes.includes("/minigames/dino") ? 1 : 0, target: 1 }),
+  },
+  {
     id: "tetris-700",
     title: "Тетрис: стабильный темп",
     description: "Набрать 700 очков в тетрисе.",
@@ -577,11 +584,11 @@ const achievementDefinitions: AchievementDefinition[] = [
     getProgress: (data) => ({ value: data.gameStats.tetris.bestScore, target: 700 }),
   },
   {
-    id: "dino-600",
-    title: "Дино: длинный забег",
-    description: "Набрать 600 очков в динозаврике.",
+    id: "dino-all-skins",
+    title: "\u041a\u0440\u0430\u0441\u0430\u0432\u0438\u0447\u043a",
+    description: "\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0432\u0441\u0435 \u0441\u043a\u0438\u043d\u044b \u0432 \u0434\u0438\u043d\u043e\u0437\u0430\u0432\u0440\u0438\u043a\u0435.",
     rarity: "epic",
-    getProgress: (data) => ({ value: data.gameStats.dino.bestScore, target: 600 }),
+    getProgress: (data) => ({ value: data.gameStats.dino.bestScore, target: 5000 }),
   },
   {
     id: "minesweeper-win",
@@ -703,7 +710,7 @@ const achievementDefinitions: AchievementDefinition[] = [
     rarity: "legendary",
     getProgress: (data) => {
       const tetrisDone = data.gameStats.tetris.bestScore >= 700 ? 1 : 0
-      const dinoDone = data.gameStats.dino.bestScore >= 600 ? 1 : 0
+      const dinoDone = data.gameStats.dino.bestScore >= 5000 ? 1 : 0
       const minesweeperDone = data.gameStats.minesweeper.wins >= 1 ? 1 : 0
       const match3Done = data.gameStats.match3.bestScore >= 450 ? 1 : 0
       const snakeDone = data.gameStats.snake.bestScore >= 40 ? 1 : 0
@@ -731,7 +738,10 @@ const achievementDefinitions: AchievementDefinition[] = [
     title: "Коллекционер достижений",
     description: "Открыть 20 достижений.",
     rarity: "legendary",
-    getProgress: (data) => ({ value: data.unlockedAchievements.length, target: 20 }),
+    getProgress: (data) => ({
+      value: data.unlockedAchievements.filter((id) => achievementDefinitions.some((definition) => definition.id === id)).length,
+      target: 20,
+    }),
   },
 ]
 
