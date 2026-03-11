@@ -14,6 +14,7 @@ import {
 } from "react"
 
 type Rarity = "common" | "rare" | "epic" | "legendary" | "impossible"
+type AchievementType = "site" | "minigames" | "tetris" | "dino" | "minesweeper" | "match3" | "snake" | "game2048" | "breakout" | "simon" | "osu"
 type GameId = "tetris" | "dino" | "minesweeper" | "match3" | "snake" | "game2048" | "breakout" | "simon" | "osu"
 type OsuDifficulty = "easy" | "normal" | "hard" | "extreme" | "legend"
 
@@ -164,6 +165,34 @@ const rarityOrder: Record<Rarity, number> = {
   common: 4,
 }
 
+const achievementTypeOrder: Record<AchievementType, number> = {
+  site: 0,
+  minigames: 1,
+  tetris: 2,
+  dino: 3,
+  minesweeper: 4,
+  match3: 5,
+  snake: 6,
+  game2048: 7,
+  breakout: 8,
+  simon: 9,
+  osu: 10,
+}
+
+const achievementTypeLabels: Record<AchievementType, string> = {
+  site: "\u0421\u0430\u0439\u0442",
+  minigames: "\u041c\u0438\u043d\u0438-\u0438\u0433\u0440\u044b",
+  tetris: "\u0422\u0435\u0442\u0440\u0438\u0441",
+  dino: "\u0414\u0438\u043d\u043e\u0437\u0430\u0432\u0440\u0438\u043a",
+  minesweeper: "\u0421\u0430\u043f\u0435\u0440",
+  match3: "\u0422\u0440\u0438 \u0412 \u0420\u044f\u0434",
+  snake: "\u0417\u043c\u0435\u0439\u043a\u0430",
+  game2048: "2048",
+  breakout: "Breakout",
+  simon: "Simon",
+  osu: "OSU-like",
+}
+
 const defaultGameEntry: GameStatsEntry = {
   plays: 0,
   wins: 0,
@@ -221,6 +250,30 @@ const ProfileContext = createContext<ProfileContextValue | null>(null)
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
 const ratio = (value: number, target: number) => (target <= 0 ? 0 : clamp(value / target, 0, 1))
 const nowIso = () => new Date().toISOString()
+
+function getAchievementType(id: string): AchievementType {
+  if (id === "games-routes" || id === "games-play-all" || id === "games-master") return "minigames"
+  if (id.startsWith("tetris-")) return "tetris"
+  if (id.startsWith("dino-")) return "dino"
+  if (id.startsWith("minesweeper-")) return "minesweeper"
+  if (id.startsWith("match3-")) return "match3"
+  if (id.startsWith("snake-")) return "snake"
+  if (id.startsWith("game2048-")) return "game2048"
+  if (id.startsWith("breakout-")) return "breakout"
+  if (id.startsWith("simon-")) return "simon"
+  if (id.startsWith("osu-")) return "osu"
+  return "site"
+}
+
+function compareAchievements(first: { id: string; rarity: Rarity; title: string }, second: { id: string; rarity: Rarity; title: string }) {
+  const typeDiff = achievementTypeOrder[getAchievementType(first.id)] - achievementTypeOrder[getAchievementType(second.id)]
+  if (typeDiff !== 0) return typeDiff
+
+  const rarityDiff = rarityOrder[first.rarity] - rarityOrder[second.rarity]
+  if (rarityDiff !== 0) return rarityDiff
+
+  return first.title.localeCompare(second.title)
+}
 
 function uniquePush(list: string[], item: string) {
   if (list.includes(item)) return list
@@ -1046,15 +1099,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const siteProgressPercent = useMemo(() => getSiteProgress(data), [data])
   const achievementViews = useMemo(() => getAchievementViews(data, siteProgressPercent), [data, siteProgressPercent])
-  const sortedAchievementViews = useMemo(
-    () =>
-      [...achievementViews].sort((first, second) => {
-        const rarityDiff = rarityOrder[first.rarity] - rarityOrder[second.rarity]
-        if (rarityDiff !== 0) return rarityDiff
-        return first.title.localeCompare(second.title)
-      }),
-    [achievementViews],
-  )
+  const sortedAchievementViews = useMemo(() => [...achievementViews].sort(compareAchievements), [achievementViews])
   const unlockedCount = achievementViews.filter((achievement) => achievement.unlocked).length
   const achievementsProgressPercent = Math.round(ratio(unlockedCount, achievementViews.length) * 100)
 
@@ -1477,37 +1522,46 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
               <div className="mt-4 overflow-y-auto pr-1">
                 <div className="space-y-2">
-                  {sortedAchievementViews.map((achievement) => {
+                  {sortedAchievementViews.map((achievement, index) => {
                     const styles = rarityStyles[achievement.rarity]
                     const percent = Math.round(ratio(achievement.progress.value, achievement.progress.target) * 100)
+                    const achievementType = getAchievementType(achievement.id)
+                    const previousType = index > 0 ? getAchievementType(sortedAchievementViews[index - 1].id) : null
+                    const showTypeHeader = index === 0 || achievementType !== previousType
                     return (
-                      <article
-                        key={achievement.id}
-                        className={`rounded-md border p-2.5 ${
-                          achievement.unlocked ? "border-black/22 bg-white/60" : "border-black/10 bg-white/35"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium">{achievement.title}</p>
-                            <p className="mt-0.5 text-[12px] leading-[1.35] text-black/68">{achievement.description}</p>
-                          </div>
-                          <span
-                            className={`rounded-full border px-2 py-0.5 text-[10px] tracking-[0.12em] uppercase ${styles.badge}`}
-                          >
-                            {rarityLabels[achievement.rarity]}
-                          </span>
-                        </div>
-                        <div className="mt-2">
-                          <div className="mb-1 flex items-center justify-between text-[10px] tracking-[0.11em] text-black/58 uppercase">
-                            <span>
-                              {Math.min(achievement.progress.value, achievement.progress.target)}/{achievement.progress.target}
+                      <div key={achievement.id} className="space-y-2">
+                        {showTypeHeader && (
+                          <p className="text-[10px] tracking-[0.16em] text-black/54 uppercase">
+                            {achievementTypeLabels[achievementType]}
+                          </p>
+                        )}
+                        <article
+                          className={`rounded-md border p-2.5 ${
+                            achievement.unlocked ? "border-black/22 bg-white/60" : "border-black/10 bg-white/35"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium">{achievement.title}</p>
+                              <p className="mt-0.5 text-[12px] leading-[1.35] text-black/68">{achievement.description}</p>
+                            </div>
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[10px] tracking-[0.12em] uppercase ${styles.badge}`}
+                            >
+                              {rarityLabels[achievement.rarity]}
                             </span>
-                            <span>{percent}%</span>
                           </div>
-                          <ProgressBar value={percent} />
-                        </div>
-                      </article>
+                          <div className="mt-2">
+                            <div className="mb-1 flex items-center justify-between text-[10px] tracking-[0.11em] text-black/58 uppercase">
+                              <span>
+                                {Math.min(achievement.progress.value, achievement.progress.target)}/{achievement.progress.target}
+                              </span>
+                              <span>{percent}%</span>
+                            </div>
+                            <ProgressBar value={percent} />
+                          </div>
+                        </article>
+                      </div>
                     )
                   })}
                 </div>
@@ -1525,11 +1579,7 @@ export function useProfileTracker() {
   if (!context) {
     const siteProgressPercent = getSiteProgress(DEFAULT_PROFILE)
     const achievementViews = getAchievementViews(DEFAULT_PROFILE, siteProgressPercent)
-    const sortedAchievementViews = [...achievementViews].sort((first, second) => {
-      const rarityDiff = rarityOrder[first.rarity] - rarityOrder[second.rarity]
-      if (rarityDiff !== 0) return rarityDiff
-      return first.title.localeCompare(second.title)
-    })
+    const sortedAchievementViews = [...achievementViews].sort(compareAchievements)
     const unlockedCount = achievementViews.filter((achievement) => achievement.unlocked).length
     const achievementsProgressPercent = Math.round(ratio(unlockedCount, achievementViews.length) * 100)
     return {
