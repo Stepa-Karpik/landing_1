@@ -1,11 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useProfileTracker } from "@/components/profile-provider"
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
 const ratio = (value: number, target: number) => (target <= 0 ? 0 : clamp(value / target, 0, 1))
+const ACHIEVEMENTS_PER_PAGE = 12
 
 const rarityClassByKey: Record<string, string> = {
   common: "border-black/12 bg-black/[0.04] text-black/68",
@@ -16,11 +17,11 @@ const rarityClassByKey: Record<string, string> = {
 }
 
 const rarityTextByKey: Record<string, string> = {
-  common: "\u041e\u0431\u044b\u0447\u043d\u043e\u0435",
-  rare: "\u0420\u0435\u0434\u043a\u043e\u0435",
-  epic: "\u042d\u043f\u0438\u0447\u0435\u0441\u043a\u043e\u0435",
-  legendary: "\u041b\u0435\u0433\u0435\u043d\u0434\u0430\u0440\u043d\u043e\u0435",
-  impossible: "\u041d\u0435\u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e",
+  common: "Обычное",
+  rare: "Редкое",
+  epic: "Эпическое",
+  legendary: "Легендарное",
+  impossible: "Невозможное",
 }
 
 const raritySortOrder: Record<string, number> = {
@@ -31,26 +32,32 @@ const raritySortOrder: Record<string, number> = {
   common: 4,
 }
 
-const miniGames: Array<{ href: string; label: string }> = [
-  { href: "/minigames/tetris", label: "\u0422\u0435\u0442\u0440\u0438\u0441" },
-  { href: "/minigames/dino", label: "\u0414\u0438\u043d\u043e\u0437\u0430\u0432\u0440\u0438\u043a" },
-  { href: "/minigames/minesweeper", label: "\u0421\u0430\u043f\u0435\u0440" },
-  { href: "/minigames/match3", label: "\u0422\u0440\u0438 \u0432 \u0440\u044f\u0434" },
-  { href: "/minigames/snake", label: "\u0417\u043c\u0435\u0439\u043a\u0430" },
-  { href: "/minigames/2048", label: "2048" },
-  { href: "/minigames/breakout", label: "Арканоид" },
-  { href: "/minigames/simon", label: "Саймон" },
-  { href: "/minigames/osu", label: "OSU-like" },
+const miniGames: Array<{
+  href: string
+  label: string
+  tone: string
+  start: string
+  end: string
+}> = [
+  { href: "/minigames/tetris", label: "Тетрис", tone: "Чистая геометрия и ритм", start: "#8ed9ff", end: "#8aa4ff" },
+  { href: "/minigames/dino", label: "Динозаврик", tone: "Бег на рефлексе", start: "#97f3b4", end: "#44c58f" },
+  { href: "/minigames/minesweeper", label: "Сапёр", tone: "Логика и риск", start: "#ffd78a", end: "#ffb067" },
+  { href: "/minigames/match3", label: "Три в ряд", tone: "Комбо и каскады", start: "#ff8fb7", end: "#ff6a87" },
+  { href: "/minigames/snake", label: "Змейка", tone: "Контроль темпа", start: "#8be7b8", end: "#35bd81" },
+  { href: "/minigames/2048", label: "2048", tone: "Слияния и план", start: "#f9d66f", end: "#f0a948" },
+  { href: "/minigames/breakout", label: "Арканоид", tone: "Растущий хаос", start: "#9ad6ff", end: "#6f8fff" },
+  { href: "/minigames/simon", label: "Саймон", tone: "Память и скорость", start: "#ff9ec2", end: "#ff6c92" },
+  { href: "/minigames/osu", label: "OSU-like", tone: "Музыкальный нажим", start: "#d8b3ff", end: "#a684ff" },
 ]
 
 const achievementTypeLabels: Record<string, string> = {
-  site: "\u0421\u0430\u0439\u0442",
-  minigames: "\u041c\u0438\u043d\u0438-\u0438\u0433\u0440\u044b",
-  tetris: "\u0422\u0435\u0442\u0440\u0438\u0441",
-  dino: "\u0414\u0438\u043d\u043e\u0437\u0430\u0432\u0440\u0438\u043a",
-  minesweeper: "\u0421\u0430\u043f\u0435\u0440",
-  match3: "\u0422\u0440\u0438 \u0412 \u0420\u044f\u0434",
-  snake: "\u0417\u043c\u0435\u0439\u043a\u0430",
+  site: "Сайт",
+  minigames: "Мини-игры",
+  tetris: "Тетрис",
+  dino: "Динозаврик",
+  minesweeper: "Сапёр",
+  match3: "Три в ряд",
+  snake: "Змейка",
   game2048: "2048",
   breakout: "Арканоид",
   simon: "Саймон",
@@ -90,8 +97,8 @@ function formatDuration(totalSeconds: number) {
   const hours = Math.floor(safe / 3600)
   const minutes = Math.floor((safe % 3600) / 60)
   const seconds = safe % 60
-  if (hours > 0) return `${hours}\u0447 ${minutes}\u043c`
-  return `${minutes}\u043c ${String(seconds).padStart(2, "0")}\u0441`
+  if (hours > 0) return `${hours}ч ${minutes}м`
+  return `${minutes}м ${String(seconds).padStart(2, "0")}с`
 }
 
 function formatDate(value?: string) {
@@ -120,7 +127,10 @@ function ProgressBar({ percent }: { percent: number }) {
 
 export default function ProfilePage() {
   const { data, siteProgressPercent, achievementsProgressPercent, unlockedCount, sortedAchievementViews } = useProfileTracker()
-  const [showMiniGames, setShowMiniGames] = useState(false)
+
+  const [activeGameIndex, setActiveGameIndex] = useState(0)
+  const [selectedType, setSelectedType] = useState<string>("all")
+  const [achievementPage, setAchievementPage] = useState(0)
 
   const gamesPlayed = useMemo(
     () => Object.values(data.gameStats).reduce((acc, game) => (game.plays > 0 ? acc + 1 : acc), 0),
@@ -141,27 +151,77 @@ export default function ProfilePage() {
     })
   }, [sortedAchievementViews])
 
+  const typeTabs = useMemo(() => {
+    const values: string[] = ["all"]
+    const seen = new Set<string>()
+    for (const achievement of orderedAchievements) {
+      const type = getAchievementType(achievement.id)
+      if (seen.has(type)) continue
+      seen.add(type)
+      values.push(type)
+    }
+    return values
+  }, [orderedAchievements])
+
+  useEffect(() => {
+    setAchievementPage(0)
+  }, [selectedType])
+
+  const filteredAchievements = useMemo(() => {
+    if (selectedType === "all") return orderedAchievements
+    return orderedAchievements.filter((achievement) => getAchievementType(achievement.id) === selectedType)
+  }, [orderedAchievements, selectedType])
+
+  const pageCount = Math.max(1, Math.ceil(filteredAchievements.length / ACHIEVEMENTS_PER_PAGE))
+
+  useEffect(() => {
+    setAchievementPage((previous) => clamp(previous, 0, pageCount - 1))
+  }, [pageCount])
+
+  const visibleAchievements = useMemo(() => {
+    const start = achievementPage * ACHIEVEMENTS_PER_PAGE
+    return filteredAchievements.slice(start, start + ACHIEVEMENTS_PER_PAGE)
+  }, [achievementPage, filteredAchievements])
+
+  const activeGame = miniGames[activeGameIndex]
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(145deg,#d9f6ec_0%,#f7dcec_68%,#fbe5ef_100%)] px-4 pb-10 pt-20 text-[#111111] md:px-8">
-      <div className="pointer-events-none absolute -left-24 top-8 h-[420px] w-[420px] rounded-full bg-[#8ed9ff]/35 blur-[90px]" />
-      <div className="pointer-events-none absolute -right-20 bottom-0 h-[460px] w-[460px] rounded-full bg-[#ff8db6]/28 blur-[92px]" />
+    <main className="relative h-screen overflow-hidden bg-[linear-gradient(145deg,#d9f6ec_0%,#f7dcec_68%,#fbe5ef_100%)] px-2 pb-2 pt-20 text-[#111111] md:px-5">
+      <div className="pointer-events-none absolute -left-24 top-6 h-[440px] w-[440px] rounded-full bg-[#8ed9ff]/35 blur-[96px]" />
+      <div className="pointer-events-none absolute -right-20 bottom-0 h-[480px] w-[480px] rounded-full bg-[#ff8db6]/28 blur-[100px]" />
 
-      <div className="relative z-10 mx-auto max-w-[1220px]">
-        <section className="rounded-2xl border border-black/10 bg-[#fff6fb]/72 p-5 shadow-[0_18px_50px_rgba(58,17,37,0.14)] backdrop-blur-sm md:p-7">
-          <h1 className="text-[clamp(28px,4.2vw,54px)] font-semibold leading-[0.92] tracking-[-0.03em]">
-            {"\u041f\u0440\u043e\u0444\u0438\u043b\u044c"}
-          </h1>
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-[1720px] flex-col gap-3">
+        <section className="rounded-2xl border border-black/10 bg-[#fff6fb]/74 p-4 shadow-[0_18px_52px_rgba(58,17,37,0.14)] backdrop-blur-sm md:p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h1 className="text-[clamp(28px,4.2vw,52px)] font-semibold leading-[0.9] tracking-[-0.03em]">Профиль</h1>
 
-          <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <article className="rounded-xl border border-black/10 bg-white/72 p-3.5">
-              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">{"\u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0441\u0430\u0439\u0442\u0430"}</p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/?tutorial=1"
+                className="rounded-lg border border-black/16 bg-[linear-gradient(180deg,#ffffff_0%,#fff5fb_100%)] px-3.5 py-2 text-[11px] tracking-[0.12em] uppercase transition-all hover:border-black/28 hover:bg-white"
+              >
+                Перепройти обучение
+              </Link>
+              <Link
+                href="/403"
+                className="rounded-lg border border-[#8f1d1f]/40 bg-[linear-gradient(180deg,#fff8f8_0%,#ffeef0_100%)] px-3.5 py-2 text-[11px] tracking-[0.12em] text-[#7a1517] uppercase transition-all hover:border-[#8f1d1f]/60 hover:bg-[#ffe9ed]"
+              >
+                Админ панель
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-2 xl:grid-cols-12">
+            <article className="rounded-xl border border-black/10 bg-white/74 p-3 xl:col-span-2">
+              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Прогресс сайта</p>
               <p className="mt-1 text-2xl font-semibold">{siteProgressPercent}%</p>
               <div className="mt-2">
                 <ProgressBar percent={siteProgressPercent} />
               </div>
             </article>
-            <article className="rounded-xl border border-black/10 bg-white/72 p-3.5">
-              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">{"\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u044f"}</p>
+
+            <article className="rounded-xl border border-black/10 bg-white/74 p-3 xl:col-span-2">
+              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Достижения</p>
               <p className="mt-1 text-2xl font-semibold">
                 {unlockedCount}/{orderedAchievements.length}
               </p>
@@ -169,117 +229,175 @@ export default function ProfilePage() {
                 <ProgressBar percent={achievementsProgressPercent} />
               </div>
             </article>
-            <article className="rounded-xl border border-black/10 bg-white/72 p-3.5">
-              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">{"\u0410\u043a\u0442\u0438\u0432\u043d\u043e\u0435 \u0432\u0440\u0435\u043c\u044f"}</p>
+
+            <article className="rounded-xl border border-black/10 bg-white/74 p-3 xl:col-span-2">
+              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Активное время</p>
               <p className="mt-1 text-2xl font-semibold">{formatDuration(data.totalSeconds)}</p>
-              <p className="mt-2 text-xs text-black/60">
-                {"\u0421\u0435\u0441\u0441\u0438\u0439"}: {data.sessions} | {"\u0418\u0433\u0440 \u043e\u0442\u043a\u0440\u044b\u0442\u043e"}: {gamesPlayed}
-              </p>
+              <p className="mt-1 text-[11px] text-black/60">Сессий: {data.sessions}</p>
+            </article>
+
+            <article className="rounded-xl border border-black/10 bg-[#fff8fd]/78 p-3 shadow-[0_10px_26px_rgba(21,8,40,0.12)] backdrop-blur-sm xl:col-span-6">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] tracking-[0.16em] text-black/56 uppercase">Игровая станция</p>
+                <span className="text-[10px] tracking-[0.16em] text-black/52 uppercase">
+                  {activeGameIndex + 1}/{miniGames.length} • {gamesPlayed} открыто
+                </span>
+              </div>
+
+              <div className="mt-2 grid grid-cols-[34px_minmax(0,1fr)_34px] items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveGameIndex((previous) => (previous - 1 + miniGames.length) % miniGames.length)}
+                  className="h-9 rounded-lg border border-black/14 bg-white/78 text-xl leading-none transition-colors hover:bg-white"
+                  aria-label="Предыдущая игра"
+                >
+                  ‹
+                </button>
+
+                <div
+                  className="relative overflow-hidden rounded-2xl border border-black/14 p-2.5 text-white shadow-[0_12px_24px_rgba(0,0,0,0.16)]"
+                  style={{ background: `linear-gradient(145deg, ${activeGame.start}, ${activeGame.end})` }}
+                >
+                  <div className="pointer-events-none absolute -left-6 -top-10 h-24 w-24 rounded-full bg-white/26 blur-xl" />
+                  <div className="pointer-events-none absolute -bottom-10 -right-6 h-24 w-24 rounded-full bg-black/12 blur-xl" />
+
+                  <p className="relative text-[10px] tracking-[0.16em] text-white/86 uppercase">Выбор игры</p>
+                  <p className="relative mt-1 text-2xl font-semibold leading-[0.9] tracking-[-0.02em]">{activeGame.label}</p>
+                  <p className="relative mt-1.5 text-[11px] text-white/90">{activeGame.tone}</p>
+
+                  <Link
+                    href={activeGame.href}
+                    className="relative mt-2 inline-flex rounded-lg border border-white/42 bg-white/18 px-2.5 py-1.5 text-[10px] tracking-[0.12em] uppercase transition-colors hover:bg-white/26"
+                  >
+                    Запустить
+                  </Link>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveGameIndex((previous) => (previous + 1) % miniGames.length)}
+                  className="h-9 rounded-lg border border-black/14 bg-white/78 text-xl leading-none transition-colors hover:bg-white"
+                  aria-label="Следующая игра"
+                >
+                  ›
+                </button>
+              </div>
+
+              <div className="mt-2 grid grid-cols-9 gap-1.5">
+                {miniGames.map((game, index) => {
+                  const active = index === activeGameIndex
+                  return (
+                    <button
+                      key={game.href}
+                      type="button"
+                      onClick={() => setActiveGameIndex(index)}
+                      className={`h-2.5 rounded-full transition-all ${active ? "bg-black" : "bg-black/18 hover:bg-black/30"}`}
+                      aria-label={game.label}
+                    />
+                  )
+                })}
+              </div>
             </article>
           </div>
-
-          <div className="mt-5 flex flex-wrap gap-2.5">
-            <button
-              type="button"
-              onClick={() => setShowMiniGames((previous) => !previous)}
-              className="rounded-lg border border-black/16 bg-[linear-gradient(180deg,#ffffff_0%,#fff5fb_100%)] px-3.5 py-2 text-[11px] tracking-[0.12em] uppercase transition-all hover:border-black/28 hover:bg-white"
-            >
-              {showMiniGames ? "\u0421\u043a\u0440\u044b\u0442\u044c \u0438\u0433\u0440\u044b" : "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0438\u0433\u0440\u0443"}
-            </button>
-            <Link
-              href="/?tutorial=1"
-              className="rounded-lg border border-black/16 bg-[linear-gradient(180deg,#ffffff_0%,#fff5fb_100%)] px-3.5 py-2 text-[11px] tracking-[0.12em] uppercase transition-all hover:border-black/28 hover:bg-white"
-            >
-              {"\u041f\u0435\u0440\u0435\u043f\u0440\u043e\u0439\u0442\u0438 \u043e\u0431\u0443\u0447\u0435\u043d\u0438\u0435"}
-            </Link>
-            <Link
-              href="/403"
-              className="rounded-lg border border-[#8f1d1f]/40 bg-[linear-gradient(180deg,#fff8f8_0%,#ffeef0_100%)] px-3.5 py-2 text-[11px] tracking-[0.12em] text-[#7a1517] uppercase transition-all hover:border-[#8f1d1f]/60 hover:bg-[#ffe9ed]"
-            >
-              {"\u0410\u0434\u043c\u0438\u043d \u043f\u0430\u043d\u0435\u043b\u044c"}
-            </Link>
-          </div>
-
-          {showMiniGames && (
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {miniGames.map((game) => (
-                <Link
-                  key={game.href}
-                  href={game.href}
-                  className="rounded-xl border border-black/12 bg-white/70 px-3 py-2.5 text-sm font-medium transition-all hover:border-black/24 hover:bg-white"
-                >
-                  {game.label}
-                </Link>
-              ))}
-            </div>
-          )}
         </section>
 
-        <section className="mt-4">
-          <article className="rounded-2xl border border-black/10 bg-[#fff8fd]/76 p-4 shadow-[0_14px_40px_rgba(21,8,40,0.12)] backdrop-blur-sm md:p-5">
-            <h2 className="text-[11px] tracking-[0.16em] text-black/56 uppercase">{"\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u044f"}</h2>
-            <div className="mt-3 max-h-[62vh] space-y-2.5 overflow-y-auto pr-1">
-              {orderedAchievements.map((achievement, index) => {
+        <section className="min-h-0 flex-1">
+          <article className="flex h-full min-h-0 flex-col rounded-2xl border border-black/10 bg-[#fff8fd]/78 p-3.5 shadow-[0_14px_40px_rgba(21,8,40,0.12)] backdrop-blur-sm md:p-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-[11px] tracking-[0.16em] text-black/56 uppercase">Достижения</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAchievementPage((previous) => clamp(previous - 1, 0, pageCount - 1))}
+                  className="h-7 w-7 rounded-lg border border-black/14 bg-white/78 text-sm leading-none transition-colors hover:bg-white"
+                  aria-label="Предыдущая страница"
+                >
+                  ‹
+                </button>
+                <span className="text-[10px] tracking-[0.14em] text-black/56 uppercase">
+                  {achievementPage + 1}/{pageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAchievementPage((previous) => clamp(previous + 1, 0, pageCount - 1))}
+                  className="h-7 w-7 rounded-lg border border-black/14 bg-white/78 text-sm leading-none transition-colors hover:bg-white"
+                  aria-label="Следующая страница"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {typeTabs.map((type) => {
+                const active = selectedType === type
+                const label = type === "all" ? "Все" : achievementTypeLabels[type] ?? "Сайт"
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setSelectedType(type)}
+                    className={`rounded-full border px-2.5 py-1 text-[10px] tracking-[0.11em] uppercase transition-colors ${
+                      active
+                        ? "border-black bg-black text-white"
+                        : "border-black/14 bg-white/74 text-black/72 hover:bg-white"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="mt-2 grid flex-1 auto-rows-fr grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {visibleAchievements.map((achievement) => {
                 const percent = Math.round(ratio(achievement.progress.value, achievement.progress.target) * 100)
                 const rarityClass = rarityClassByKey[achievement.rarity] ?? rarityClassByKey.common
                 const rarityText = rarityTextByKey[achievement.rarity] ?? achievement.rarity
                 const unlockedAt = formatDate(achievement.unlockedAt)
-
-                const achievementType = getAchievementType(achievement.id)
-                const previousType = index > 0 ? getAchievementType(orderedAchievements[index - 1].id) : null
-                const showTypeHeader = index === 0 || achievementType !== previousType
+                const type = getAchievementType(achievement.id)
 
                 return (
-                  <div key={achievement.id} className="space-y-2.5">
-                    {showTypeHeader && (
-                      <div className="flex items-center gap-2.5 pb-0.5 pt-1">
-                        <span className="shrink-0 text-[10px] tracking-[0.16em] text-black/58 uppercase">
-                          {achievementTypeLabels[achievementType] ?? achievementTypeLabels.site}
+                  <article
+                    key={achievement.id}
+                    className={`rounded-lg border p-2.5 transition-colors ${
+                      achievement.unlocked
+                        ? "border-black/20 bg-[linear-gradient(160deg,rgba(255,255,255,0.92)_0%,rgba(255,245,251,0.82)_100%)]"
+                        : "border-black/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.66)_0%,rgba(255,248,253,0.52)_100%)]"
+                    }`}
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-1.5">
+                      <span className="text-[9px] tracking-[0.12em] text-black/56 uppercase">
+                        {achievementTypeLabels[type] ?? "Сайт"}
+                      </span>
+                      <span className={`rounded-full border px-1.5 py-0.5 text-[9px] tracking-[0.1em] uppercase ${rarityClass}`}>
+                        {rarityText}
+                      </span>
+                    </div>
+
+                    <p className="text-[13px] font-semibold leading-[1.15]">{achievement.title}</p>
+                    <p className="mt-0.5 text-[10px] leading-[1.25] text-black/66">{achievement.description}</p>
+
+                    <div className="mt-1.5">
+                      <div className="mb-0.5 flex items-center justify-between text-[9px] tracking-[0.09em] text-black/56 uppercase">
+                        <span>
+                          {Math.min(achievement.progress.value, achievement.progress.target)}/{achievement.progress.target}
                         </span>
-                        <span className="h-px w-full bg-[linear-gradient(90deg,rgba(17,17,17,0.28)_0%,rgba(17,17,17,0.08)_100%)]" />
+                        <span>{percent}%</span>
                       </div>
+                      <ProgressBar percent={percent} />
+                    </div>
+
+                    {achievement.unlocked && unlockedAt && (
+                      <p className="mt-1 text-[9px] tracking-[0.08em] text-black/52 uppercase">Открыто: {unlockedAt}</p>
                     )}
-
-                    <article
-                      className={`rounded-xl border p-3.5 transition-colors ${
-                        achievement.unlocked
-                          ? "border-black/20 bg-[linear-gradient(160deg,rgba(255,255,255,0.92)_0%,rgba(255,245,251,0.82)_100%)]"
-                          : "border-black/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.66)_0%,rgba(255,248,253,0.52)_100%)]"
-                      }`}
-                    >
-                      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                        <div>
-                          <p className="text-[15px] font-semibold leading-[1.2] tracking-[-0.01em]">{achievement.title}</p>
-                          <p className="mt-1 text-xs leading-[1.45] text-black/66">{achievement.description}</p>
-                          {achievement.unlocked && unlockedAt && (
-                            <p className="mt-1.5 text-[10px] tracking-[0.08em] text-black/52 uppercase">
-                              {"\u041e\u0442\u043a\u0440\u044b\u0442\u043e"}: {unlockedAt}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex items-start justify-start md:justify-end">
-                          <span
-                            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] tracking-[0.11em] uppercase ${rarityClass}`}
-                          >
-                            {rarityText}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <div className="mb-1.5 flex items-center justify-between text-[10px] tracking-[0.11em] text-black/56 uppercase">
-                          <span>
-                            {Math.min(achievement.progress.value, achievement.progress.target)}/{achievement.progress.target}
-                          </span>
-                          <span>{percent}%</span>
-                        </div>
-                        <ProgressBar percent={percent} />
-                      </div>
-                    </article>
-                  </div>
+                  </article>
                 )
               })}
+
+              {Array.from({ length: Math.max(0, ACHIEVEMENTS_PER_PAGE - visibleAchievements.length) }).map((_, index) => (
+                <div key={`placeholder-${index}`} className="rounded-lg border border-black/8 bg-white/35" />
+              ))}
             </div>
           </article>
         </section>
