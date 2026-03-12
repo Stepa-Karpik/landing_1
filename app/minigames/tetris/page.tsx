@@ -1,12 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { MinigameShell } from "@/components/minigame-shell"
 import { useProfileTracker } from "@/components/profile-provider"
 
 type PieceType = "I" | "O" | "T" | "S" | "Z" | "J" | "L"
 
-interface Piece {
+interface ActivePiece {
   type: PieceType
   matrix: number[][]
   row: number
@@ -15,16 +14,26 @@ interface Piece {
 
 interface TetrisState {
   board: number[][]
-  piece: Piece
+  active: ActivePiece
+  queue: PieceType[]
+  hold: PieceType | null
+  canHold: boolean
   score: number
   lines: number
+  level: number
+  combo: number
+  b2b: boolean
   gameOver: boolean
+  paused: boolean
 }
 
-const BOARD_WIDTH = 10
-const BOARD_HEIGHT = 20
+const ROWS = 20
+const COLS = 10
+const PREVIEW_COUNT = 5
 
-const SHAPES: Record<PieceType, number[][]> = {
+const PIECE_ORDER: PieceType[] = ["I", "O", "T", "S", "Z", "J", "L"]
+
+const PIECES: Record<PieceType, number[][]> = {
   I: [[1, 1, 1, 1]],
   O: [
     [1, 1],
@@ -52,100 +61,162 @@ const SHAPES: Record<PieceType, number[][]> = {
   ],
 }
 
-const PIECE_ORDER: PieceType[] = ["I", "O", "T", "S", "Z", "J", "L"]
-const LINE_SCORES = [0, 100, 300, 500, 800]
-const COLORS = [
-  "bg-transparent",
-  "bg-cyan-500",
-  "bg-yellow-400",
-  "bg-violet-500",
-  "bg-emerald-500",
-  "bg-red-500",
-  "bg-blue-500",
-  "bg-orange-500",
-]
+const PIECE_COLOR: Record<PieceType, string> = {
+  I: "bg-cyan-400",
+  O: "bg-yellow-300",
+  T: "bg-violet-400",
+  S: "bg-emerald-400",
+  Z: "bg-rose-400",
+  J: "bg-blue-500",
+  L: "bg-orange-400",
+}
+
+const LINE_BASE_SCORES = [0, 100, 300, 500, 800]
 
 function createBoard() {
-  return Array.from({ length: BOARD_HEIGHT }, () => Array.from({ length: BOARD_WIDTH }, () => 0))
+  return Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => 0))
 }
 
 function cloneMatrix(matrix: number[][]) {
   return matrix.map((row) => [...row])
 }
 
-function randomPiece(): Piece {
-  const type = PIECE_ORDER[Math.floor(Math.random() * PIECE_ORDER.length)]
-  const matrix = cloneMatrix(SHAPES[type])
-  const col = Math.floor((BOARD_WIDTH - matrix[0].length) / 2)
-  return { type, matrix, row: 0, col }
+function shuffleBag() {
+  const next = [...PIECE_ORDER]
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    const temp = next[index]
+    next[index] = next[swapIndex]
+    next[swapIndex] = temp
+  }
+  return next
 }
 
-function rotateMatrix(matrix: number[][]) {
+function ensureQueue(queue: PieceType[]) {
+  const next = [...queue]
+  while (next.length < PREVIEW_COUNT + 1) {
+    next.push(...shuffleBag())
+  }
+  return next
+}
+
+function consumeQueue(queue: PieceType[]) {
+  const refilled = ensureQueue(queue)
+  const [type, ...rest] = refilled
+  return { type, queue: rest }
+}
+
+function spawnPiece(type: PieceType): ActivePiece {
+  const matrix = cloneMatrix(PIECES[type])
+  const col = Math.floor((COLS - matrix[0].length) / 2)
+  return {
+    type,
+    matrix,
+    row: -1,
+    col,
+  }
+}
+
+function rotateRight(matrix: number[][]) {
   return matrix[0].map((_, colIndex) => matrix.map((row) => row[colIndex]).reverse())
 }
 
-function canPlace(board: number[][], piece: Piece) {
+function canPlace(board: number[][], piece: ActivePiece) {
   for (let row = 0; row < piece.matrix.length; row += 1) {
     for (let col = 0; col < piece.matrix[row].length; col += 1) {
       if (piece.matrix[row][col] === 0) continue
-      const boardRow = piece.row + row
-      const boardCol = piece.col + col
-      if (boardCol < 0 || boardCol >= BOARD_WIDTH || boardRow >= BOARD_HEIGHT) return false
-      if (boardRow >= 0 && board[boardRow][boardCol] !== 0) return false
+      const targetRow = piece.row + row
+      const targetCol = piece.col + col
+      if (targetCol < 0 || targetCol >= COLS || targetRow >= ROWS) return false
+      if (targetRow >= 0 && board[targetRow][targetCol] !== 0) return false
     }
   }
   return true
 }
 
-function mergePiece(board: number[][], piece: Piece) {
+function mergePiece(board: number[][], piece: ActivePiece) {
   const next = board.map((row) => [...row])
-  const colorValue = PIECE_ORDER.indexOf(piece.type) + 1
+  const value = PIECE_ORDER.indexOf(piece.type) + 1
+
   for (let row = 0; row < piece.matrix.length; row += 1) {
     for (let col = 0; col < piece.matrix[row].length; col += 1) {
       if (piece.matrix[row][col] === 0) continue
       const targetRow = piece.row + row
       const targetCol = piece.col + col
-      if (targetRow >= 0 && targetRow < BOARD_HEIGHT && targetCol >= 0 && targetCol < BOARD_WIDTH) {
-        next[targetRow][targetCol] = colorValue
+      if (targetRow >= 0 && targetRow < ROWS && targetCol >= 0 && targetCol < COLS) {
+        next[targetRow][targetCol] = value
       }
     }
   }
+
   return next
 }
 
-function clearFilledLines(board: number[][]) {
-  const remainingRows = board.filter((row) => row.some((cell) => cell === 0))
-  const cleared = BOARD_HEIGHT - remainingRows.length
-  const padding = Array.from({ length: cleared }, () => Array.from({ length: BOARD_WIDTH }, () => 0))
-  return {
-    board: [...padding, ...remainingRows],
-    cleared,
-  }
+function clearLines(board: number[][]) {
+  const leftRows = board.filter((row) => row.some((cell) => cell === 0))
+  const cleared = ROWS - leftRows.length
+  const topPadding = Array.from({ length: cleared }, () => Array.from({ length: COLS }, () => 0))
+  const nextBoard = [...topPadding, ...leftRows]
+  const perfectClear = nextBoard.flat().every((cell) => cell === 0)
+  return { board: nextBoard, cleared, perfectClear }
 }
 
-function overlayPiece(board: number[][], piece: Piece) {
-  const preview = board.map((row) => [...row])
-  const value = PIECE_ORDER.indexOf(piece.type) + 1
-  for (let row = 0; row < piece.matrix.length; row += 1) {
-    for (let col = 0; col < piece.matrix[row].length; col += 1) {
-      if (piece.matrix[row][col] === 0) continue
-      const targetRow = piece.row + row
-      const targetCol = piece.col + col
-      if (targetRow >= 0 && targetRow < BOARD_HEIGHT && targetCol >= 0 && targetCol < BOARD_WIDTH) {
-        preview[targetRow][targetCol] = value
-      }
-    }
+function getDropRow(board: number[][], piece: ActivePiece) {
+  let row = piece.row
+  while (canPlace(board, { ...piece, row: row + 1 })) {
+    row += 1
   }
-  return preview
+  return row
 }
 
 function createInitialState(): TetrisState {
+  const first = consumeQueue([])
   return {
     board: createBoard(),
-    piece: randomPiece(),
+    active: spawnPiece(first.type),
+    queue: first.queue,
+    hold: null,
+    canHold: true,
     score: 0,
     lines: 0,
+    level: 1,
+    combo: -1,
+    b2b: false,
     gameOver: false,
+    paused: false,
+  }
+}
+
+function lockPiece(state: TetrisState, dropBonus: number) {
+  const merged = mergePiece(state.board, state.active)
+  const { board: clearedBoard, cleared, perfectClear } = clearLines(merged)
+
+  const nextCombo = cleared > 0 ? state.combo + 1 : -1
+  const lineScore = LINE_BASE_SCORES[cleared] * state.level
+  const b2bBonus = cleared === 4 && state.b2b ? Math.floor(lineScore * 0.5) : 0
+  const comboBonus = cleared > 0 ? Math.max(0, nextCombo) * 50 * state.level : 0
+  const perfectClearBonus = perfectClear && cleared > 0 ? 1000 * state.level : 0
+  const gained = lineScore + b2bBonus + comboBonus + perfectClearBonus + dropBonus
+
+  const nextLines = state.lines + cleared
+  const nextLevel = 1 + Math.floor(nextLines / 10)
+
+  const consumed = consumeQueue(state.queue)
+  const nextActive = spawnPiece(consumed.type)
+  const nextGameOver = !canPlace(clearedBoard, nextActive)
+
+  return {
+    ...state,
+    board: clearedBoard,
+    active: nextActive,
+    queue: consumed.queue,
+    canHold: true,
+    score: state.score + gained,
+    lines: nextLines,
+    level: nextLevel,
+    combo: nextCombo,
+    b2b: cleared === 4 ? true : cleared > 0 ? false : state.b2b,
+    gameOver: nextGameOver,
   }
 }
 
@@ -154,197 +225,390 @@ export default function TetrisPage() {
   const [game, setGame] = useState<TetrisState>(() => createInitialState())
   const reportedRef = useRef(false)
 
-  const stepDown = useCallback(() => {
-    setGame((previous) => {
-      if (previous.gameOver) return previous
-
-      const movedPiece = { ...previous.piece, row: previous.piece.row + 1 }
-      if (canPlace(previous.board, movedPiece)) {
-        return { ...previous, piece: movedPiece }
-      }
-
-      const merged = mergePiece(previous.board, previous.piece)
-      const { board: clearedBoard, cleared } = clearFilledLines(merged)
-      const nextScore = previous.score + LINE_SCORES[cleared]
-      const nextLines = previous.lines + cleared
-      const nextPiece = randomPiece()
-
-      if (!canPlace(clearedBoard, nextPiece)) {
-        return {
-          board: clearedBoard,
-          piece: nextPiece,
-          score: nextScore,
-          lines: nextLines,
-          gameOver: true,
-        }
-      }
-
-      return {
-        board: clearedBoard,
-        piece: nextPiece,
-        score: nextScore,
-        lines: nextLines,
-        gameOver: false,
-      }
-    })
+  const restart = useCallback(() => {
+    reportedRef.current = false
+    setGame(createInitialState())
   }, [])
 
-  const moveHorizontal = useCallback((direction: -1 | 1) => {
+  const moveSide = useCallback((direction: -1 | 1) => {
     setGame((previous) => {
-      if (previous.gameOver) return previous
-      const moved = { ...previous.piece, col: previous.piece.col + direction }
+      if (previous.gameOver || previous.paused) return previous
+      const moved = { ...previous.active, col: previous.active.col + direction }
       if (!canPlace(previous.board, moved)) return previous
-      return { ...previous, piece: moved }
+      return { ...previous, active: moved }
     })
   }, [])
 
   const rotate = useCallback(() => {
     setGame((previous) => {
-      if (previous.gameOver) return previous
-      const rotatedMatrix = rotateMatrix(previous.piece.matrix)
-      const basePiece = { ...previous.piece, matrix: rotatedMatrix }
-      const offsets = [0, -1, 1, -2, 2]
-      for (const offset of offsets) {
-        const candidate = { ...basePiece, col: basePiece.col + offset }
+      if (previous.gameOver || previous.paused) return previous
+      const rotated = rotateRight(previous.active.matrix)
+      const base = { ...previous.active, matrix: rotated }
+      const kicks = [0, -1, 1, -2, 2]
+
+      for (const offset of kicks) {
+        const candidate = { ...base, col: base.col + offset }
         if (canPlace(previous.board, candidate)) {
-          return { ...previous, piece: candidate }
+          return { ...previous, active: candidate }
         }
       }
+
       return previous
     })
   }, [])
 
+  const softDrop = useCallback(() => {
+    setGame((previous) => {
+      if (previous.gameOver || previous.paused) return previous
+      const moved = { ...previous.active, row: previous.active.row + 1 }
+      if (canPlace(previous.board, moved)) {
+        return {
+          ...previous,
+          active: moved,
+          score: previous.score + 1,
+        }
+      }
+      return lockPiece(previous, 0)
+    })
+  }, [])
+
+  const hardDrop = useCallback(() => {
+    setGame((previous) => {
+      if (previous.gameOver || previous.paused) return previous
+      const dropRow = getDropRow(previous.board, previous.active)
+      const distance = Math.max(0, dropRow - previous.active.row)
+      const landed = { ...previous.active, row: dropRow }
+      return lockPiece({ ...previous, active: landed }, distance * 2)
+    })
+  }, [])
+
+  const hold = useCallback(() => {
+    setGame((previous) => {
+      if (previous.gameOver || previous.paused || !previous.canHold) return previous
+
+      const activeType = previous.active.type
+      if (previous.hold === null) {
+        const consumed = consumeQueue(previous.queue)
+        const nextActive = spawnPiece(consumed.type)
+        if (!canPlace(previous.board, nextActive)) {
+          return {
+            ...previous,
+            gameOver: true,
+          }
+        }
+        return {
+          ...previous,
+          active: nextActive,
+          hold: activeType,
+          queue: consumed.queue,
+          canHold: false,
+        }
+      }
+
+      const swappedActive = spawnPiece(previous.hold)
+      if (!canPlace(previous.board, swappedActive)) {
+        return {
+          ...previous,
+          gameOver: true,
+        }
+      }
+
+      return {
+        ...previous,
+        active: swappedActive,
+        hold: activeType,
+        canHold: false,
+      }
+    })
+  }, [])
+
+  const tickDown = useCallback(() => {
+    setGame((previous) => {
+      if (previous.gameOver || previous.paused) return previous
+      const moved = { ...previous.active, row: previous.active.row + 1 }
+      if (canPlace(previous.board, moved)) {
+        return { ...previous, active: moved }
+      }
+      return lockPiece(previous, 0)
+    })
+  }, [])
+
   useEffect(() => {
-    if (game.gameOver) return
-    const speed = Math.max(130, 560 - game.lines * 14)
+    if (game.gameOver || game.paused) return
+    const tickMs = Math.max(80, 760 - (game.level - 1) * 55)
     const timer = window.setInterval(() => {
-      stepDown()
-    }, speed)
+      tickDown()
+    }, tickMs)
     return () => window.clearInterval(timer)
-  }, [game.gameOver, game.lines, stepDown])
+  }, [game.gameOver, game.level, game.paused, tickDown])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft") {
         event.preventDefault()
-        moveHorizontal(-1)
-      } else if (event.key === "ArrowRight") {
+        moveSide(-1)
+        return
+      }
+      if (event.key === "ArrowRight") {
         event.preventDefault()
-        moveHorizontal(1)
-      } else if (event.key === "ArrowDown") {
-        event.preventDefault()
-        stepDown()
-      } else if (event.key === "ArrowUp" || event.key.toLowerCase() === "w") {
+        moveSide(1)
+        return
+      }
+      if (event.key === "ArrowUp" || event.key.toLowerCase() === "x") {
         event.preventDefault()
         rotate()
-      } else if (event.key === " " && game.gameOver) {
+        return
+      }
+      if (event.key === "ArrowDown") {
         event.preventDefault()
-        reportedRef.current = false
-        setGame(createInitialState())
+        softDrop()
+        return
+      }
+      if (event.key === " ") {
+        event.preventDefault()
+        if (game.gameOver) {
+          restart()
+          return
+        }
+        hardDrop()
+        return
+      }
+      if (event.key.toLowerCase() === "c") {
+        event.preventDefault()
+        hold()
+        return
+      }
+      if (event.key.toLowerCase() === "p") {
+        event.preventDefault()
+        setGame((previous) => ({ ...previous, paused: !previous.paused }))
+        return
+      }
+      if (event.key === "Enter" && game.gameOver) {
+        event.preventDefault()
+        restart()
       }
     }
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [game.gameOver, moveHorizontal, rotate, stepDown])
+  }, [game.gameOver, hardDrop, hold, moveSide, restart, rotate, softDrop])
 
   useEffect(() => {
     if (!game.gameOver || reportedRef.current) return
     reportedRef.current = true
     recordGameResult("tetris", {
       score: game.score,
-      win: game.score >= 700,
+      win: game.score >= 2500,
     })
   }, [game.gameOver, game.score, recordGameResult])
 
-  const visualBoard = useMemo(() => overlayPiece(game.board, game.piece), [game.board, game.piece])
-  const best = data.gameStats.tetris.bestScore
+  const bestScore = data.gameStats.tetris.bestScore
+
+  const renderedBoard = useMemo(() => {
+    const activeMap = new Map<string, PieceType>()
+    const ghostSet = new Set<string>()
+
+    const ghostRow = getDropRow(game.board, game.active)
+    for (let row = 0; row < game.active.matrix.length; row += 1) {
+      for (let col = 0; col < game.active.matrix[row].length; col += 1) {
+        if (game.active.matrix[row][col] === 0) continue
+
+        const activeRow = game.active.row + row
+        const activeCol = game.active.col + col
+        if (activeRow >= 0 && activeRow < ROWS && activeCol >= 0 && activeCol < COLS) {
+          activeMap.set(`${activeRow}:${activeCol}`, game.active.type)
+        }
+
+        const ghostCellRow = ghostRow + row
+        const ghostCellCol = game.active.col + col
+        if (
+          ghostCellRow >= 0 &&
+          ghostCellRow < ROWS &&
+          ghostCellCol >= 0 &&
+          ghostCellCol < COLS &&
+          game.board[ghostCellRow][ghostCellCol] === 0
+        ) {
+          ghostSet.add(`${ghostCellRow}:${ghostCellCol}`)
+        }
+      }
+    }
+
+    return { activeMap, ghostSet }
+  }, [game.active, game.board])
 
   return (
-    <MinigameShell
-      title="Тетрис"
-      subtitle="Управление: стрелки влево/вправо/вниз, вверх для поворота. Цель для достижения: 700 очков."
-    >
-      <div className="grid gap-4 lg:grid-cols-[auto_1fr]">
-        <div className="w-fit rounded-md border border-black/15 bg-[#faf8f3] p-2">
-          <div className="grid grid-cols-10 gap-0.5">
-            {visualBoard.flatMap((row, rowIndex) =>
-              row.map((value, colIndex) => (
-                <div
-                  key={`${rowIndex}-${colIndex}`}
-                  className={`h-5 w-5 rounded-[2px] border border-black/8 ${COLORS[value]}`}
-                />
-              )),
-            )}
+    <main className="h-screen overflow-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] sm:px-3">
+      <section className="mx-auto flex h-full w-full max-w-[1620px] flex-col gap-3 lg:flex-row">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-black/14 bg-[linear-gradient(180deg,#fffdfa_0%,#f7f2ea_100%)] p-2 shadow-[0_10px_36px_rgba(0,0,0,0.07)]">
+          <div className="h-full max-h-[86vh] w-auto aspect-[1/2] rounded-xl border border-black/20 bg-[#1d1f28] p-1.5">
+            <div className="grid h-full w-full grid-cols-10 grid-rows-20 gap-[2px] rounded-[10px] bg-black/30 p-[2px]">
+              {Array.from({ length: ROWS * COLS }).map((_, index) => {
+                const row = Math.floor(index / COLS)
+                const col = index % COLS
+                const key = `${row}:${col}`
+
+                const activeType = renderedBoard.activeMap.get(key)
+                if (activeType) {
+                  return <div key={key} className={`rounded-[2px] border border-black/14 ${PIECE_COLOR[activeType]}`} />
+                }
+
+                if (renderedBoard.ghostSet.has(key)) {
+                  return <div key={key} className="rounded-[2px] border border-white/20 bg-white/10" />
+                }
+
+                const value = game.board[row][col]
+                if (value > 0) {
+                  const type = PIECE_ORDER[value - 1]
+                  return <div key={key} className={`rounded-[2px] border border-black/14 ${PIECE_COLOR[type]}`} />
+                }
+
+                return <div key={key} className="rounded-[2px] border border-white/[0.04] bg-black/22" />
+              })}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2 text-center text-[11px] tracking-[0.12em] uppercase">
-            <div className="rounded-md border border-black/12 bg-white/65 px-2 py-2">
-              <p className="text-black/55">Счет</p>
-              <p className="mt-0.5 text-lg font-semibold">{game.score}</p>
+        <aside className="grid w-full shrink-0 grid-cols-2 gap-2 lg:w-[360px] lg:grid-cols-1 lg:gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
+              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Score</p>
+              <p className="mt-1 text-xl font-semibold">{game.score}</p>
             </div>
-            <div className="rounded-md border border-black/12 bg-white/65 px-2 py-2">
-              <p className="text-black/55">Линии</p>
-              <p className="mt-0.5 text-lg font-semibold">{game.lines}</p>
+            <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
+              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Lines</p>
+              <p className="mt-1 text-xl font-semibold">{game.lines}</p>
             </div>
-            <div className="rounded-md border border-black/12 bg-white/65 px-2 py-2">
-              <p className="text-black/55">Рекорд</p>
-              <p className="mt-0.5 text-lg font-semibold">{best}</p>
+            <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
+              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Level</p>
+              <p className="mt-1 text-xl font-semibold">{game.level}</p>
+            </div>
+            <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
+              <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Best</p>
+              <p className="mt-1 text-xl font-semibold">{bestScore}</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="rounded-xl border border-black/12 bg-white/74 p-2.5">
+            <p className="text-center text-[10px] tracking-[0.14em] text-black/56 uppercase">Next</p>
+            <div className="mt-2 space-y-1.5">
+              {game.queue.slice(0, PREVIEW_COUNT).map((type, index) => {
+                const matrix = PIECES[type]
+                return (
+                  <div key={`${type}-${index}`} className="rounded-lg border border-black/10 bg-[#f8f5ed] p-1.5">
+                    <div className="grid grid-cols-4 grid-rows-4 gap-[2px]">
+                      {Array.from({ length: 16 }).map((_, cellIndex) => {
+                        const row = Math.floor(cellIndex / 4)
+                        const col = cellIndex % 4
+                        const hasBlock = matrix[row]?.[col] === 1
+                        return (
+                          <div
+                            key={`${type}-${index}-${cellIndex}`}
+                            className={`h-3.5 w-3.5 rounded-[2px] border ${
+                              hasBlock ? `${PIECE_COLOR[type]} border-black/16` : "border-black/[0.04] bg-black/6"
+                            }`}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-black/12 bg-white/74 p-2.5">
+            <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Hold</p>
+            <div className="mt-2 rounded-lg border border-black/10 bg-[#f8f5ed] p-1.5">
+              <div className="grid grid-cols-4 grid-rows-4 gap-[2px]">
+                {Array.from({ length: 16 }).map((_, cellIndex) => {
+                  const row = Math.floor(cellIndex / 4)
+                  const col = cellIndex % 4
+                  const matrix = game.hold ? PIECES[game.hold] : null
+                  const hasBlock = matrix ? matrix[row]?.[col] === 1 : false
+                  return (
+                    <div
+                      key={`hold-${cellIndex}`}
+                      className={`h-3.5 w-3.5 rounded-[2px] border ${
+                        hasBlock && game.hold
+                          ? `${PIECE_COLOR[game.hold]} border-black/16`
+                          : "border-black/[0.04] bg-black/6"
+                      }`}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => moveHorizontal(-1)}
-              className="rounded-md border border-black/20 bg-white/75 px-3 py-1.5 text-xs tracking-[0.1em] uppercase"
+              onClick={() => moveSide(-1)}
+              className="rounded-lg border border-black/16 bg-white/76 px-3 py-2 text-xs tracking-[0.11em] uppercase"
             >
-              Влево
+              Left
+            </button>
+            <button
+              type="button"
+              onClick={() => moveSide(1)}
+              className="rounded-lg border border-black/16 bg-white/76 px-3 py-2 text-xs tracking-[0.11em] uppercase"
+            >
+              Right
             </button>
             <button
               type="button"
               onClick={() => rotate()}
-              className="rounded-md border border-black/20 bg-white/75 px-3 py-1.5 text-xs tracking-[0.1em] uppercase"
+              className="rounded-lg border border-black/16 bg-white/76 px-3 py-2 text-xs tracking-[0.11em] uppercase"
             >
-              Поворот
+              Rotate
             </button>
             <button
               type="button"
-              onClick={() => moveHorizontal(1)}
-              className="rounded-md border border-black/20 bg-white/75 px-3 py-1.5 text-xs tracking-[0.1em] uppercase"
+              onClick={() => softDrop()}
+              className="rounded-lg border border-black/16 bg-white/76 px-3 py-2 text-xs tracking-[0.11em] uppercase"
             >
-              Вправо
+              Down
             </button>
             <button
               type="button"
-              onClick={() => stepDown()}
-              className="rounded-md border border-black/20 bg-white/75 px-3 py-1.5 text-xs tracking-[0.1em] uppercase"
+              onClick={() => hardDrop()}
+              className="rounded-lg border border-black/16 bg-black px-3 py-2 text-xs tracking-[0.11em] text-white uppercase"
             >
-              Вниз
+              Hard
+            </button>
+            <button
+              type="button"
+              onClick={() => hold()}
+              className="rounded-lg border border-black/16 bg-white/76 px-3 py-2 text-xs tracking-[0.11em] uppercase"
+            >
+              Hold
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setGame((previous) => ({ ...previous, paused: !previous.paused }))}
+              className="rounded-lg border border-black/16 bg-white/76 px-3 py-2 text-xs tracking-[0.11em] uppercase"
+            >
+              {game.paused ? "Resume" : "Pause"}
+            </button>
+            <button
+              type="button"
+              onClick={() => restart()}
+              className="rounded-lg border border-black/16 bg-black px-3 py-2 text-xs tracking-[0.11em] text-white uppercase"
+            >
+              Restart
             </button>
           </div>
 
           {game.gameOver && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-              <p className="font-semibold">Игра окончена</p>
-              <p className="mt-1 text-red-700/90">Пробел или кнопка ниже для рестарта.</p>
+            <div className="rounded-xl border border-red-300/70 bg-red-50/90 px-3 py-2 text-center text-xs tracking-[0.09em] text-red-800 uppercase">
+              Game Over
             </div>
           )}
-
-          <button
-            type="button"
-            onClick={() => {
-              reportedRef.current = false
-              setGame(createInitialState())
-            }}
-            className="rounded-md border border-black/20 bg-black px-4 py-2 text-xs tracking-[0.12em] text-white uppercase"
-          >
-            Новая игра
-          </button>
-        </div>
-      </div>
-    </MinigameShell>
+        </aside>
+      </section>
+    </main>
   )
 }

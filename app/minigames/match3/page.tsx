@@ -1,57 +1,56 @@
 "use client"
 
+import { motion } from "framer-motion"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { MinigameShell } from "@/components/minigame-shell"
 import { useProfileTracker } from "@/components/profile-provider"
 
-type Tile = number | null
+interface Gem {
+  id: number
+  color: number
+  row: number
+  col: number
+  entering: boolean
+}
 
 interface Point {
   row: number
   col: number
 }
 
-const SIZE = 8
+type Grid = Array<Array<Gem | null>>
+
+const SIZE = 9
 const COLORS = 6
-const START_MOVES = 25
-const TILE_STYLES = [
-  "bg-red-400",
-  "bg-emerald-400",
-  "bg-blue-400",
-  "bg-amber-400",
-  "bg-fuchsia-400",
-  "bg-cyan-400",
+const START_MOVES = 32
+
+const GEM_CLASSES = [
+  "bg-[#ff8ea1]",
+  "bg-[#ffd166]",
+  "bg-[#7bd88f]",
+  "bg-[#6fb8ff]",
+  "bg-[#b992ff]",
+  "bg-[#ff9f6a]",
 ]
 
-function randomTile(): Tile {
+const GEM_GLOWS = [
+  "shadow-[0_0_14px_rgba(255,142,161,0.55)]",
+  "shadow-[0_0_14px_rgba(255,209,102,0.52)]",
+  "shadow-[0_0_14px_rgba(123,216,143,0.52)]",
+  "shadow-[0_0_14px_rgba(111,184,255,0.52)]",
+  "shadow-[0_0_14px_rgba(185,146,255,0.52)]",
+  "shadow-[0_0_14px_rgba(255,159,106,0.52)]",
+]
+
+function randomColor() {
   return Math.floor(Math.random() * COLORS)
 }
 
-function createBoard() {
-  const board: Tile[][] = Array.from({ length: SIZE }, () => Array.from({ length: SIZE }, () => randomTile()))
-  for (let row = 0; row < SIZE; row += 1) {
-    for (let col = 0; col < SIZE; col += 1) {
-      while (
-        (col >= 2 && board[row][col] === board[row][col - 1] && board[row][col] === board[row][col - 2]) ||
-        (row >= 2 && board[row][col] === board[row - 1][col] && board[row][col] === board[row - 2][col])
-      ) {
-        board[row][col] = randomTile()
-      }
-    }
-  }
-  return board
+function createEmptyGrid(): Grid {
+  return Array.from({ length: SIZE }, () => Array.from({ length: SIZE }, () => null))
 }
 
-function cloneBoard(board: Tile[][]) {
-  return board.map((row) => [...row])
-}
-
-function swap(board: Tile[][], first: Point, second: Point) {
-  const next = cloneBoard(board)
-  const temp = next[first.row][first.col]
-  next[first.row][first.col] = next[second.row][second.col]
-  next[second.row][second.col] = temp
-  return next
+function cloneGrid(grid: Grid): Grid {
+  return grid.map((row) => row.map((gem) => (gem ? { ...gem } : null)))
 }
 
 function isAdjacent(first: Point, second: Point) {
@@ -60,14 +59,14 @@ function isAdjacent(first: Point, second: Point) {
   return rowDiff + colDiff === 1
 }
 
-function findMatches(board: Tile[][]) {
+function findMatches(grid: Grid) {
   const marks = new Set<string>()
 
   for (let row = 0; row < SIZE; row += 1) {
     let streak = 1
     for (let col = 1; col <= SIZE; col += 1) {
-      const current = col < SIZE ? board[row][col] : null
-      const previous = board[row][col - 1]
+      const current = col < SIZE ? grid[row][col]?.color ?? null : null
+      const previous = grid[row][col - 1]?.color ?? null
       if (col < SIZE && current !== null && previous !== null && current === previous) {
         streak += 1
       } else {
@@ -84,8 +83,8 @@ function findMatches(board: Tile[][]) {
   for (let col = 0; col < SIZE; col += 1) {
     let streak = 1
     for (let row = 1; row <= SIZE; row += 1) {
-      const current = row < SIZE ? board[row][col] : null
-      const previous = board[row - 1][col]
+      const current = row < SIZE ? grid[row][col]?.color ?? null : null
+      const previous = grid[row - 1][col]?.color ?? null
       if (row < SIZE && current !== null && previous !== null && current === previous) {
         streak += 1
       } else {
@@ -102,74 +101,161 @@ function findMatches(board: Tile[][]) {
   return marks
 }
 
-function collapseBoard(board: Tile[][]) {
-  const next = cloneBoard(board)
+function swapCells(grid: Grid, first: Point, second: Point) {
+  const next = cloneGrid(grid)
+  const firstGem = next[first.row][first.col]
+  const secondGem = next[second.row][second.col]
+  if (!firstGem || !secondGem) return next
 
-  for (let col = 0; col < SIZE; col += 1) {
-    const stack: Tile[] = []
-    for (let row = SIZE - 1; row >= 0; row -= 1) {
-      if (next[row][col] !== null) {
-        stack.push(next[row][col])
-      }
-    }
-
-    for (let row = SIZE - 1; row >= 0; row -= 1) {
-      const nextValue = stack.shift()
-      next[row][col] = nextValue ?? randomTile()
-    }
-  }
-
+  next[first.row][first.col] = { ...secondGem, row: first.row, col: first.col }
+  next[second.row][second.col] = { ...firstGem, row: second.row, col: second.col }
   return next
 }
 
-function resolveMatches(board: Tile[][]) {
-  let nextBoard = cloneBoard(board)
+function createResolvedGrid(startGrid: Grid, nextIdRef: React.MutableRefObject<number>) {
+  let grid = cloneGrid(startGrid)
   let gainedScore = 0
+  let maxCascade = 0
 
   while (true) {
-    const marks = findMatches(nextBoard)
-    if (marks.size === 0) break
+    const matches = findMatches(grid)
+    if (matches.size === 0) break
 
-    gainedScore += marks.size * 12
-    for (const mark of marks) {
+    maxCascade += 1
+    gainedScore += matches.size * 18 * maxCascade
+
+    for (const mark of matches) {
       const [rowRaw, colRaw] = mark.split(":")
       const row = Number(rowRaw)
       const col = Number(colRaw)
-      nextBoard[row][col] = null
+      grid[row][col] = null
     }
 
-    nextBoard = collapseBoard(nextBoard)
+    const collapsed = createEmptyGrid()
+
+    for (let col = 0; col < SIZE; col += 1) {
+      const existing: Gem[] = []
+      for (let row = SIZE - 1; row >= 0; row -= 1) {
+        const gem = grid[row][col]
+        if (gem) existing.push(gem)
+      }
+
+      let targetRow = SIZE - 1
+      for (const gem of existing) {
+        collapsed[targetRow][col] = {
+          ...gem,
+          row: targetRow,
+          col,
+          entering: false,
+        }
+        targetRow -= 1
+      }
+
+      while (targetRow >= 0) {
+        collapsed[targetRow][col] = {
+          id: nextIdRef.current,
+          color: randomColor(),
+          row: targetRow,
+          col,
+          entering: true,
+        }
+        nextIdRef.current += 1
+        targetRow -= 1
+      }
+    }
+
+    grid = collapsed
   }
 
-  return { board: nextBoard, gainedScore }
+  return { grid, gainedScore, maxCascade }
+}
+
+function createInitialGrid(nextIdRef: React.MutableRefObject<number>) {
+  let grid = createEmptyGrid()
+
+  for (let row = 0; row < SIZE; row += 1) {
+    for (let col = 0; col < SIZE; col += 1) {
+      let color = randomColor()
+
+      while (
+        (col >= 2 && grid[row][col - 1]?.color === color && grid[row][col - 2]?.color === color) ||
+        (row >= 2 && grid[row - 1][col]?.color === color && grid[row - 2][col]?.color === color)
+      ) {
+        color = randomColor()
+      }
+
+      grid[row][col] = {
+        id: nextIdRef.current,
+        color,
+        row,
+        col,
+        entering: false,
+      }
+      nextIdRef.current += 1
+    }
+  }
+
+  return grid
 }
 
 export default function Match3Page() {
   const { data, recordGameResult } = useProfileTracker()
-  const [board, setBoard] = useState<Tile[][]>(() => createBoard())
+
+  const nextIdRef = useRef(1)
+  const [grid, setGrid] = useState<Grid>(() => createInitialGrid(nextIdRef))
   const [selected, setSelected] = useState<Point | null>(null)
-  const [score, setScore] = useState(0)
   const [movesLeft, setMovesLeft] = useState(START_MOVES)
+  const [score, setScore] = useState(0)
+  const [bestCascade, setBestCascade] = useState(0)
+  const [busy, setBusy] = useState(false)
   const [gameOver, setGameOver] = useState(false)
+  const [boardPixels, setBoardPixels] = useState(560)
+
   const reportGuardRef = useRef(false)
 
-  const bestScore = data.gameStats.match3.bestScore
+  useEffect(() => {
+    const updateBoardSize = () => {
+      const nextSize = Math.min(window.innerHeight * 0.77, window.innerWidth * 0.84)
+      setBoardPixels(Math.max(300, Math.floor(nextSize)))
+    }
+
+    updateBoardSize()
+    window.addEventListener("resize", updateBoardSize)
+    return () => window.removeEventListener("resize", updateBoardSize)
+  }, [])
+
+  useEffect(() => {
+    if (movesLeft > 0 || busy || gameOver) return
+    setGameOver(true)
+  }, [busy, gameOver, movesLeft])
+
+  useEffect(() => {
+    if (!gameOver || reportGuardRef.current) return
+    reportGuardRef.current = true
+
+    recordGameResult("match3", {
+      score,
+      win: score >= 1400,
+    })
+  }, [gameOver, recordGameResult, score])
 
   const reset = () => {
     reportGuardRef.current = false
-    setBoard(createBoard())
+    setGrid(createInitialGrid(nextIdRef))
     setSelected(null)
-    setScore(0)
     setMovesLeft(START_MOVES)
+    setScore(0)
+    setBestCascade(0)
+    setBusy(false)
     setGameOver(false)
   }
 
-  const onTileClick = (row: number, col: number) => {
-    if (gameOver) return
+  const onGemClick = (row: number, col: number) => {
+    if (busy || gameOver) return
 
-    const point = { row, col }
+    const clicked = { row, col }
     if (!selected) {
-      setSelected(point)
+      setSelected(clicked)
       return
     }
 
@@ -178,99 +264,134 @@ export default function Match3Page() {
       return
     }
 
-    if (!isAdjacent(selected, point)) {
-      setSelected(point)
+    if (!isAdjacent(selected, clicked)) {
+      setSelected(clicked)
       return
     }
 
-    const swapped = swap(board, selected, point)
-    const resolved = resolveMatches(swapped)
-    const nextMoves = movesLeft - 1
-
-    if (resolved.gainedScore === 0) {
-      setMovesLeft(nextMoves)
-      setSelected(null)
-      if (nextMoves <= 0) {
-        setGameOver(true)
-      }
-      return
-    }
-
-    setBoard(resolved.board)
-    setScore((previous) => previous + resolved.gainedScore)
-    setMovesLeft(nextMoves)
+    const first = selected
+    const second = clicked
     setSelected(null)
-    if (nextMoves <= 0) {
-      setGameOver(true)
-    }
+    setBusy(true)
+
+    setMovesLeft((previous) => Math.max(0, previous - 1))
+
+    const swapped = swapCells(grid, first, second)
+    setGrid(swapped)
+
+    window.setTimeout(() => {
+      const matchAfterSwap = findMatches(swapped)
+
+      if (matchAfterSwap.size === 0) {
+        const reverted = swapCells(swapped, first, second)
+        setGrid(reverted)
+        window.setTimeout(() => {
+          setBusy(false)
+        }, 170)
+        return
+      }
+
+      const resolved = createResolvedGrid(swapped, nextIdRef)
+      setGrid(resolved.grid)
+      setScore((previous) => previous + resolved.gainedScore)
+      setBestCascade((previous) => Math.max(previous, resolved.maxCascade))
+
+      window.setTimeout(() => {
+        setBusy(false)
+      }, 200)
+    }, 170)
   }
 
-  useEffect(() => {
-    if (!gameOver || reportGuardRef.current) return
-    reportGuardRef.current = true
-    recordGameResult("match3", {
-      score,
-      win: score >= 450,
-    })
-  }, [gameOver, recordGameResult, score])
+  const gems = useMemo(() => {
+    const list: Gem[] = []
+    for (let row = 0; row < SIZE; row += 1) {
+      for (let col = 0; col < SIZE; col += 1) {
+        const gem = grid[row][col]
+        if (gem) list.push(gem)
+      }
+    }
+    return list
+  }, [grid])
 
-  const headerText = useMemo(() => {
-    if (gameOver) return "Ходы закончились. Запусти новый раунд."
-    return "Выбери две соседние фишки для обмена. Матчи от 3 дают очки."
-  }, [gameOver])
+  const cellSize = boardPixels / SIZE
+  const bestScore = data.gameStats.match3.bestScore
 
   return (
-    <MinigameShell
-      title="Три в ряд"
-      subtitle="Ограничение: 25 ходов. Цель для достижения: 450 очков."
-    >
-      <div className="space-y-4">
-        <div className="grid grid-cols-3 gap-2 text-center text-[11px] tracking-[0.12em] uppercase">
-          <div className="rounded-md border border-black/12 bg-white/65 px-2 py-2">
-            <p className="text-black/55">Счет</p>
-            <p className="mt-0.5 text-lg font-semibold">{score}</p>
+    <main className="h-screen overflow-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] sm:px-3">
+      <section className="mx-auto flex h-full max-w-[1620px] flex-col gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
+            <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Score</p>
+            <p className="mt-1 text-xl font-semibold">{score}</p>
           </div>
-          <div className="rounded-md border border-black/12 bg-white/65 px-2 py-2">
-            <p className="text-black/55">Ходы</p>
-            <p className="mt-0.5 text-lg font-semibold">{movesLeft}</p>
+          <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
+            <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Moves</p>
+            <p className="mt-1 text-xl font-semibold">{movesLeft}</p>
           </div>
-          <div className="rounded-md border border-black/12 bg-white/65 px-2 py-2">
-            <p className="text-black/55">Рекорд</p>
-            <p className="mt-0.5 text-lg font-semibold">{bestScore}</p>
+          <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
+            <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Best</p>
+            <p className="mt-1 text-xl font-semibold">{bestScore}</p>
           </div>
+          <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
+            <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Cascade</p>
+            <p className="mt-1 text-xl font-semibold">x{bestCascade}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => reset()}
+            className="rounded-xl border border-black/14 bg-black px-3 py-2 text-xs tracking-[0.11em] text-white uppercase"
+          >
+            Restart
+          </button>
         </div>
 
-        <div className="w-fit rounded-md border border-black/12 bg-[#faf8f3] p-2">
-          <div className="grid grid-cols-8 gap-1">
-            {board.flatMap((rowItems, rowIndex) =>
-              rowItems.map((tile, colIndex) => {
-                const isActive = selected?.row === rowIndex && selected?.col === colIndex
-                const styleClass = tile === null ? "bg-black/10" : TILE_STYLES[tile]
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-black/14 bg-[linear-gradient(180deg,#fffdfa_0%,#f5eee3_100%)] p-2 shadow-[0_10px_36px_rgba(0,0,0,0.07)]">
+          <div className="relative rounded-xl border border-black/16 bg-[#1f2430] p-2" style={{ width: boardPixels + 16, height: boardPixels + 16 }}>
+            <div className="grid h-full w-full rounded-[8px] bg-black/30 p-[4px]" style={{ gridTemplateColumns: `repeat(${SIZE}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${SIZE}, minmax(0, 1fr))`, gap: 4 }}>
+              {Array.from({ length: SIZE * SIZE }).map((_, index) => (
+                <div key={`slot-${index}`} className="rounded-[5px] border border-white/[0.05] bg-black/20" />
+              ))}
+            </div>
+
+            <div className="pointer-events-none absolute inset-2">
+              {gems.map((gem) => {
+                const isSelected = selected?.row === gem.row && selected?.col === gem.col
                 return (
-                  <button
-                    key={`${rowIndex}-${colIndex}`}
+                  <motion.button
+                    key={gem.id}
                     type="button"
-                    onClick={() => onTileClick(rowIndex, colIndex)}
-                    className={`h-9 w-9 rounded-md border transition-transform ${
-                      isActive ? "scale-105 border-black" : "border-black/10"
-                    } ${styleClass}`}
-                  />
+                    initial={gem.entering ? { y: -cellSize * 1.3, opacity: 0 } : false}
+                    animate={{
+                      x: gem.col * cellSize,
+                      y: gem.row * cellSize,
+                      opacity: 1,
+                      scale: isSelected ? 1.08 : 1,
+                    }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    onClick={() => onGemClick(gem.row, gem.col)}
+                    className="pointer-events-auto absolute flex items-center justify-center rounded-[9px] border border-black/20"
+                    style={{
+                      width: cellSize,
+                      height: cellSize,
+                      padding: Math.max(2, Math.floor(cellSize * 0.1)),
+                    }}
+                  >
+                    <span
+                      className={`h-full w-full rounded-[7px] border border-white/26 ${GEM_CLASSES[gem.color]} ${GEM_GLOWS[gem.color]} transition-transform`}
+                    />
+                  </motion.button>
                 )
-              }),
-            )}
+              })}
+            </div>
           </div>
         </div>
 
-        <p className={`text-sm ${gameOver ? "text-red-700" : "text-black/70"}`}>{headerText}</p>
-
-        <button
-          type="button"
-          onClick={() => reset()}
-          className="rounded-md border border-black/20 bg-black px-4 py-2 text-xs tracking-[0.12em] text-white uppercase"
-        >
-          Новая игра
-        </button>
-      </div>
-    </MinigameShell>
+        {gameOver && (
+          <div className="rounded-lg border border-red-300/70 bg-red-50/90 px-3 py-2 text-center text-xs tracking-[0.11em] text-red-800 uppercase">
+            Round Complete
+          </div>
+        )}
+      </section>
+    </main>
   )
 }

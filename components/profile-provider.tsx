@@ -17,6 +17,7 @@ type Rarity = "common" | "rare" | "epic" | "legendary" | "impossible"
 type AchievementType = "site" | "minigames" | "tetris" | "dino" | "minesweeper" | "match3" | "snake" | "game2048" | "breakout" | "simon" | "osu"
 type GameId = "tetris" | "dino" | "minesweeper" | "match3" | "snake" | "game2048" | "breakout" | "simon" | "osu"
 type OsuDifficulty = "easy" | "normal" | "hard" | "extreme" | "legend"
+type SnakeMode = "classic" | "tunnel" | "rush"
 
 interface GameStatsEntry {
   plays: number
@@ -58,6 +59,8 @@ interface ProfileData {
   unlockedAt: Record<string, string>
   gameStats: Record<GameId, GameStatsEntry>
   osuProgress: OsuProgress
+  minesweeperFirstMoveDeaths: number
+  snakeModeBestScores: Record<SnakeMode, number>
 }
 
 interface ProgressInfo {
@@ -90,6 +93,8 @@ interface GameResultPayload {
   score?: number
   win?: boolean
   timeMs?: number
+  mode?: string
+  firstMoveMine?: boolean
   trackId?: number
   difficulty?: string
   accuracy?: number
@@ -128,6 +133,7 @@ const GAME_ROUTES = [
 ] as const
 const SITE_ROUTES = [...MAIN_ROUTES, ...GAME_ROUTES] as const
 const OSU_DIFFICULTIES: readonly OsuDifficulty[] = ["easy", "normal", "hard", "extreme", "legend"]
+const SNAKE_MODES: readonly SnakeMode[] = ["classic", "tunnel", "rush"]
 
 const miniGames: ReadonlyArray<{ id: GameId; label: string; href: (typeof GAME_ROUTES)[number]; goal: string }> = [
   { id: "tetris", label: "Тетрис", href: "/minigames/tetris", goal: "700 очков" },
@@ -214,6 +220,12 @@ const defaultOsuProgress: OsuProgress = {
   bestCombo: 0,
 }
 
+const defaultSnakeModeBestScores: Record<SnakeMode, number> = {
+  classic: 0,
+  tunnel: 0,
+  rush: 0,
+}
+
 const DEFAULT_PROFILE: ProfileData = {
   version: 1,
   sessions: 0,
@@ -243,6 +255,8 @@ const DEFAULT_PROFILE: ProfileData = {
     osu: { ...defaultGameEntry },
   },
   osuProgress: { ...defaultOsuProgress },
+  minesweeperFirstMoveDeaths: 0,
+  snakeModeBestScores: { ...defaultSnakeModeBestScores },
 }
 
 const ProfileContext = createContext<ProfileContextValue | null>(null)
@@ -371,6 +385,13 @@ function sanitizeProfileData(raw: unknown): ProfileData {
     normalizedTracks.length,
     normalizedPerfectTracks.length,
   )
+  const snakeModeRaw = candidate.snakeModeBestScores && typeof candidate.snakeModeBestScores === "object"
+    ? (candidate.snakeModeBestScores as Partial<Record<SnakeMode, unknown>>)
+    : {}
+  const snakeModeBestScores = SNAKE_MODES.reduce<Record<SnakeMode, number>>((acc, mode) => {
+    acc[mode] = Math.max(0, Number(snakeModeRaw[mode] ?? 0) || 0)
+    return acc
+  }, { ...defaultSnakeModeBestScores })
 
   return {
     version: 1,
@@ -428,6 +449,8 @@ function sanitizeProfileData(raw: unknown): ProfileData {
       bestAccuracy: clamp(Number(osuProgressRaw.bestAccuracy ?? 0) || 0, 0, 100),
       bestCombo: Math.max(0, Number(osuProgressRaw.bestCombo ?? 0) || 0),
     },
+    minesweeperFirstMoveDeaths: Math.max(0, Number(candidate.minesweeperFirstMoveDeaths ?? 0) || 0),
+    snakeModeBestScores,
   }
 }
 
@@ -630,11 +653,39 @@ const achievementDefinitions: AchievementDefinition[] = [
     getProgress: (data) => ({ value: data.visitedRoutes.includes("/minigames/dino") ? 1 : 0, target: 1 }),
   },
   {
+    id: "tetris-first-game",
+    title: "Тетрис: первый блок",
+    description: "Сыграть в тетрис хотя бы один раз.",
+    rarity: "common",
+    getProgress: (data) => ({ value: data.gameStats.tetris.plays, target: 1 }),
+  },
+  {
+    id: "tetris-300",
+    title: "Тетрис: разгон",
+    description: "Набрать 300 очков в тетрисе.",
+    rarity: "rare",
+    getProgress: (data) => ({ value: data.gameStats.tetris.bestScore, target: 300 }),
+  },
+  {
     id: "tetris-700",
     title: "Тетрис: стабильный темп",
     description: "Набрать 700 очков в тетрисе.",
     rarity: "epic",
     getProgress: (data) => ({ value: data.gameStats.tetris.bestScore, target: 700 }),
+  },
+  {
+    id: "tetris-2000",
+    title: "Тетрис: прессинг",
+    description: "Набрать 2000 очков в тетрисе.",
+    rarity: "legendary",
+    getProgress: (data) => ({ value: data.gameStats.tetris.bestScore, target: 2000 }),
+  },
+  {
+    id: "tetris-5000",
+    title: "Тетрис: абсолют",
+    description: "Набрать 5000 очков в тетрисе.",
+    rarity: "impossible",
+    getProgress: (data) => ({ value: data.gameStats.tetris.bestScore, target: 5000 }),
   },
   {
     id: "dino-all-skins",
@@ -644,25 +695,131 @@ const achievementDefinitions: AchievementDefinition[] = [
     getProgress: (data) => ({ value: data.gameStats.dino.bestScore, target: 5000 }),
   },
   {
+    id: "minesweeper-first-game",
+    title: "Сапёр: первый раскоп",
+    description: "Сыграть в сапёр хотя бы один раз.",
+    rarity: "common",
+    getProgress: (data) => ({ value: data.gameStats.minesweeper.plays, target: 1 }),
+  },
+  {
+    id: "minesweeper-no-luck",
+    title: "Не судьба",
+    description: "На 1 уровне подорваться на самой первой открытой клетке.",
+    rarity: "rare",
+    getProgress: (data) => ({ value: data.minesweeperFirstMoveDeaths, target: 1 }),
+  },
+  {
     id: "minesweeper-win",
     title: "Сапер: чистое поле",
     description: "Выиграть в сапере минимум один раз.",
     rarity: "epic",
+    getProgress: (data) => ({ value: data.gameStats.minesweeper.bestScore, target: 3 }),
+  },
+  {
+    id: "minesweeper-full-run",
+    title: "Сапёр: чистая серия",
+    description: "Пройти все 5 уровней сапёра без поражения.",
+    rarity: "legendary",
     getProgress: (data) => ({ value: data.gameStats.minesweeper.wins, target: 1 }),
+  },
+  {
+    id: "minesweeper-speedrun",
+    title: "Сапёр: молниеносно",
+    description: "Пройти всю серию сапёра быстрее чем за 12 минут.",
+    rarity: "impossible",
+    getProgress: (data) => ({ value: data.gameStats.minesweeper.bestTimeMs === null ? 0 : 1, target: 1 }),
+    isUnlocked: (data) => data.gameStats.minesweeper.bestTimeMs !== null && data.gameStats.minesweeper.bestTimeMs <= 12 * 60 * 1000,
+  },
+  {
+    id: "match3-first-game",
+    title: "Три в ряд: старт",
+    description: "Сыграть в «Три в ряд» хотя бы один раз.",
+    rarity: "common",
+    getProgress: (data) => ({ value: data.gameStats.match3.plays, target: 1 }),
+  },
+  {
+    id: "match3-300",
+    title: "Три в ряд: разминка",
+    description: "Набрать 300 очков в «Три в ряд».",
+    rarity: "rare",
+    getProgress: (data) => ({ value: data.gameStats.match3.bestScore, target: 300 }),
   },
   {
     id: "match3-450",
     title: "Три в ряд: комбо",
     description: "Набрать 450 очков в игре «Три в ряд».",
     rarity: "epic",
-    getProgress: (data) => ({ value: data.gameStats.match3.bestScore, target: 450 }),
+    getProgress: (data) => ({ value: data.gameStats.match3.bestScore, target: 1200 }),
+  },
+  {
+    id: "match3-2400",
+    title: "Три в ряд: каскад",
+    description: "Набрать 2400 очков в «Три в ряд».",
+    rarity: "legendary",
+    getProgress: (data) => ({ value: data.gameStats.match3.bestScore, target: 2400 }),
+  },
+  {
+    id: "match3-4000",
+    title: "Три в ряд: без тормозов",
+    description: "Набрать 4000 очков в «Три в ряд».",
+    rarity: "impossible",
+    getProgress: (data) => ({ value: data.gameStats.match3.bestScore, target: 4000 }),
+  },
+  {
+    id: "snake-first-game",
+    title: "Змейка: пробный заход",
+    description: "Сыграть в змейку хотя бы один раз.",
+    rarity: "common",
+    getProgress: (data) => ({ value: data.gameStats.snake.plays, target: 1 }),
+  },
+  {
+    id: "snake-20",
+    title: "Змейка: уже длинная",
+    description: "Набрать 20 очков в змейке.",
+    rarity: "rare",
+    getProgress: (data) => ({ value: data.gameStats.snake.bestScore, target: 20 }),
   },
   {
     id: "snake-40",
     title: "Змейка: выживание",
     description: "Набрать 40 очков в змейке.",
     rarity: "epic",
-    getProgress: (data) => ({ value: data.gameStats.snake.bestScore, target: 40 }),
+    getProgress: (data) => ({ value: data.gameStats.snake.bestScore, target: 45 }),
+  },
+  {
+    id: "snake-75",
+    title: "Змейка: хищник",
+    description: "Набрать 75 очков в змейке.",
+    rarity: "legendary",
+    getProgress: (data) => ({ value: data.gameStats.snake.bestScore, target: 75 }),
+  },
+  {
+    id: "snake-rush-60",
+    title: "Змейка: турбо-режим",
+    description: "Набрать 60 очков в режиме Rush.",
+    rarity: "impossible",
+    getProgress: (data) => ({ value: data.snakeModeBestScores.rush, target: 60 }),
+  },
+  {
+    id: "game2048-first-game",
+    title: "2048: первая плитка",
+    description: "Сыграть в 2048 хотя бы один раз.",
+    rarity: "common",
+    getProgress: (data) => ({ value: data.gameStats.game2048.plays, target: 1 }),
+  },
+  {
+    id: "game2048-256",
+    title: "2048: разогрев",
+    description: "Собрать плитку 256.",
+    rarity: "rare",
+    getProgress: (data) => ({ value: data.gameStats.game2048.bestScore, target: 256 }),
+  },
+  {
+    id: "game2048-1024",
+    title: "2048: плотный матч",
+    description: "Собрать плитку 1024.",
+    rarity: "epic",
+    getProgress: (data) => ({ value: data.gameStats.game2048.bestScore, target: 1024 }),
   },
   {
     id: "game2048-tile",
@@ -670,6 +827,13 @@ const achievementDefinitions: AchievementDefinition[] = [
     description: "Собрать плитку 2048 на поле 4x4.",
     rarity: "legendary",
     getProgress: (data) => ({ value: data.gameStats.game2048.bestScore, target: 2048 }),
+  },
+  {
+    id: "game2048-4096",
+    title: "2048: за гранью",
+    description: "Собрать плитку 4096.",
+    rarity: "impossible",
+    getProgress: (data) => ({ value: data.gameStats.game2048.bestScore, target: 4096 }),
   },
   {
     id: "breakout-win",
@@ -765,8 +929,8 @@ const achievementDefinitions: AchievementDefinition[] = [
       const tetrisDone = data.gameStats.tetris.bestScore >= 700 ? 1 : 0
       const dinoDone = data.gameStats.dino.bestScore >= 5000 ? 1 : 0
       const minesweeperDone = data.gameStats.minesweeper.wins >= 1 ? 1 : 0
-      const match3Done = data.gameStats.match3.bestScore >= 450 ? 1 : 0
-      const snakeDone = data.gameStats.snake.bestScore >= 40 ? 1 : 0
+      const match3Done = data.gameStats.match3.bestScore >= 1200 ? 1 : 0
+      const snakeDone = data.gameStats.snake.bestScore >= 45 ? 1 : 0
       const game2048Done = data.gameStats.game2048.bestScore >= 2048 ? 1 : 0
       const breakoutDone = data.gameStats.breakout.wins >= 1 ? 1 : 0
       const simonDone = data.gameStats.simon.bestScore >= 10 ? 1 : 0
@@ -1221,6 +1385,22 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             : current.bestTimeMs,
       }
 
+      let nextMinesweeperFirstMoveDeaths = previous.minesweeperFirstMoveDeaths
+      if (gameId === "minesweeper" && payload.firstMoveMine) {
+        nextMinesweeperFirstMoveDeaths += 1
+      }
+
+      let nextSnakeModeBestScores = previous.snakeModeBestScores
+      if (gameId === "snake" && typeof payload.mode === "string") {
+        const mode = SNAKE_MODES.find((value) => value === payload.mode)
+        if (mode) {
+          nextSnakeModeBestScores = {
+            ...previous.snakeModeBestScores,
+            [mode]: Math.max(previous.snakeModeBestScores[mode], score),
+          }
+        }
+      }
+
       let nextOsuProgress = previous.osuProgress
       if (gameId === "osu") {
         const rawTrackId = Number(payload.trackId ?? NaN)
@@ -1298,6 +1478,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           [gameId]: updatedEntry,
         },
         osuProgress: nextOsuProgress,
+        minesweeperFirstMoveDeaths: nextMinesweeperFirstMoveDeaths,
+        snakeModeBestScores: nextSnakeModeBestScores,
       }
     })
   }, [])
