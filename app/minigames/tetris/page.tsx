@@ -383,9 +383,13 @@ export default function TetrisPage() {
         setGame((previous) => ({ ...previous, paused: !previous.paused }))
         return
       }
-      if (event.key === "Enter" && game.gameOver) {
+      if (event.key === "Enter") {
         event.preventDefault()
-        restart()
+        if (game.gameOver) {
+          restart()
+          return
+        }
+        hold()
       }
     }
 
@@ -495,20 +499,22 @@ export default function TetrisPage() {
                 const matrix = PIECES[type]
                 return (
                   <div key={`${type}-${index}`} className="rounded-lg border border-black/10 bg-[#f8f5ed] p-1.5">
-                    <div className="grid grid-cols-4 grid-rows-4 gap-[2px]">
-                      {Array.from({ length: 16 }).map((_, cellIndex) => {
-                        const row = Math.floor(cellIndex / 4)
-                        const col = cellIndex % 4
-                        const hasBlock = matrix[row]?.[col] === 1
-                        return (
-                          <div
-                            key={`${type}-${index}-${cellIndex}`}
-                            className={`h-3.5 w-3.5 rounded-[2px] border ${
-                              hasBlock ? `${PIECE_COLOR[type]} border-black/16` : "border-black/[0.04] bg-black/6"
-                            }`}
-                          />
-                        )
-                      })}
+                    <div className="flex justify-center">
+                      <div className="inline-grid grid-cols-4 grid-rows-4 gap-[2px]">
+                        {Array.from({ length: 16 }).map((_, cellIndex) => {
+                          const row = Math.floor(cellIndex / 4)
+                          const col = cellIndex % 4
+                          const hasBlock = matrix[row]?.[col] === 1
+                          return (
+                            <div
+                              key={`${type}-${index}-${cellIndex}`}
+                              className={`h-3.5 w-3.5 rounded-[2px] border ${
+                                hasBlock ? `${PIECE_COLOR[type]} border-black/16` : "border-black/[0.04] bg-black/6"
+                              }`}
+                            />
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
                 )
@@ -519,28 +525,30 @@ export default function TetrisPage() {
           <div className="rounded-xl border border-black/12 bg-white/74 p-2.5">
             <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Hold</p>
             <div className="mt-2 rounded-lg border border-black/10 bg-[#f8f5ed] p-1.5">
-              <div className="grid grid-cols-4 grid-rows-4 gap-[2px]">
-                {Array.from({ length: 16 }).map((_, cellIndex) => {
-                  const row = Math.floor(cellIndex / 4)
-                  const col = cellIndex % 4
-                  const matrix = game.hold ? PIECES[game.hold] : null
-                  const hasBlock = matrix ? matrix[row]?.[col] === 1 : false
-                  return (
-                    <div
-                      key={`hold-${cellIndex}`}
-                      className={`h-3.5 w-3.5 rounded-[2px] border ${
-                        hasBlock && game.hold
-                          ? `${PIECE_COLOR[game.hold]} border-black/16`
-                          : "border-black/[0.04] bg-black/6"
-                      }`}
-                    />
-                  )
-                })}
+              <div className="flex justify-center">
+                <div className="inline-grid grid-cols-4 grid-rows-4 gap-[2px]">
+                  {Array.from({ length: 16 }).map((_, cellIndex) => {
+                    const row = Math.floor(cellIndex / 4)
+                    const col = cellIndex % 4
+                    const matrix = game.hold ? PIECES[game.hold] : null
+                    const hasBlock = matrix ? matrix[row]?.[col] === 1 : false
+                    return (
+                      <div
+                        key={`hold-${cellIndex}`}
+                        className={`h-3.5 w-3.5 rounded-[2px] border ${
+                          hasBlock && game.hold
+                            ? `${PIECE_COLOR[game.hold]} border-black/16`
+                            : "border-black/[0.04] bg-black/6"
+                        }`}
+                      />
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 md:hidden">
             <button
               type="button"
               onClick={() => moveSide(-1)}
@@ -585,7 +593,7 @@ export default function TetrisPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 md:hidden">
             <button
               type="button"
               onClick={() => setGame((previous) => ({ ...previous, paused: !previous.paused }))}

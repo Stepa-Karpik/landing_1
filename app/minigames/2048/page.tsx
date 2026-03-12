@@ -289,11 +289,15 @@ export default function Game2048Page() {
         event.preventDefault()
         performMove("down")
       }
+      if (event.key.toLowerCase() === "r") {
+        event.preventDefault()
+        restart()
+      }
     }
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [performMove])
+  }, [performMove, restart])
 
   const gap = Math.max(6, Math.floor(boardPixels * 0.022))
   const cell = (boardPixels - gap * (SIZE + 1)) / SIZE
@@ -301,7 +305,7 @@ export default function Game2048Page() {
   return (
     <main className="h-screen overflow-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] sm:px-3">
       <section className="mx-auto flex h-full max-w-[1620px] flex-col gap-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div className="grid grid-cols-3 gap-2">
           <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
             <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Score</p>
             <p className="mt-1 text-xl font-semibold">{score}</p>
@@ -314,23 +318,16 @@ export default function Game2048Page() {
             <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Best</p>
             <p className="mt-1 text-xl font-semibold">{bestTile}</p>
           </div>
+        </div>
+
+        <div className="grid grid-cols-5 gap-2 md:hidden">
           <button
             type="button"
             onClick={() => performMove("left")}
-            className="rounded-xl border border-black/14 bg-white/74 px-3 py-2 text-xs tracking-[0.11em] uppercase"
+            className="rounded-lg border border-black/14 bg-white/74 px-3 py-2 text-xs tracking-[0.11em] uppercase"
           >
             Left
           </button>
-          <button
-            type="button"
-            onClick={() => restart()}
-            className="rounded-xl border border-black/14 bg-black px-3 py-2 text-xs tracking-[0.11em] text-white uppercase"
-          >
-            Restart
-          </button>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           <button
             type="button"
             onClick={() => performMove("up")}
@@ -352,12 +349,20 @@ export default function Game2048Page() {
           >
             Down
           </button>
-          {gameOver && (
-            <div className="col-span-2 rounded-lg border border-red-300/70 bg-red-50/90 px-3 py-2 text-center text-xs tracking-[0.11em] text-red-800 uppercase">
-              No Moves
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => restart()}
+            className="rounded-lg border border-black/14 bg-black px-3 py-2 text-xs tracking-[0.11em] text-white uppercase"
+          >
+            Restart
+          </button>
         </div>
+
+        {gameOver && (
+          <div className="rounded-lg border border-red-300/70 bg-red-50/90 px-3 py-2 text-center text-xs tracking-[0.11em] text-red-800 uppercase">
+            No Moves
+          </div>
+        )}
 
         <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-black/14 bg-[linear-gradient(180deg,#fffdfa_0%,#f5eee3_100%)] p-2 shadow-[0_10px_36px_rgba(0,0,0,0.07)]">
           <div

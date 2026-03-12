@@ -13,9 +13,9 @@ interface Point {
 
 const GRID_SIZE = 26
 const MODE_LABELS: Record<SnakeMode, string> = {
-  classic: "Classic",
-  tunnel: "Tunnel",
-  rush: "Rush",
+  classic: "Классика",
+  tunnel: "Тоннель",
+  rush: "Раш",
 }
 
 function initialSnake() {
@@ -207,7 +207,7 @@ export default function SnakePage() {
   return (
     <main className="h-screen overflow-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] sm:px-3">
       <section className="mx-auto flex h-full max-w-[1620px] flex-col gap-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
             <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Score</p>
             <p className="mt-1 text-xl font-semibold">{score}</p>
@@ -216,37 +216,9 @@ export default function SnakePage() {
             <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Best</p>
             <p className="mt-1 text-xl font-semibold">{bestScore}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setNextDirection("up")}
-            className="rounded-xl border border-black/14 bg-white/74 px-3 py-2 text-xs tracking-[0.11em] uppercase"
-          >
-            Up
-          </button>
-          <button
-            type="button"
-            onClick={() => setNextDirection("left")}
-            className="rounded-xl border border-black/14 bg-white/74 px-3 py-2 text-xs tracking-[0.11em] uppercase"
-          >
-            Left
-          </button>
-          <button
-            type="button"
-            onClick={() => setNextDirection("down")}
-            className="rounded-xl border border-black/14 bg-white/74 px-3 py-2 text-xs tracking-[0.11em] uppercase"
-          >
-            Down
-          </button>
-          <button
-            type="button"
-            onClick={() => setNextDirection("right")}
-            className="rounded-xl border border-black/14 bg-white/74 px-3 py-2 text-xs tracking-[0.11em] uppercase"
-          >
-            Right
-          </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-2">
           {(Object.keys(MODE_LABELS) as SnakeMode[]).map((modeKey) => (
             <button
               key={modeKey}
@@ -261,13 +233,6 @@ export default function SnakePage() {
               {MODE_LABELS[modeKey]}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => reset()}
-            className="rounded-xl border border-black/14 bg-white/76 px-3 py-2 text-xs tracking-[0.12em] uppercase"
-          >
-            Restart
-          </button>
         </div>
 
         <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-black/14 bg-[linear-gradient(180deg,#fffdfa_0%,#f5eee3_100%)] p-2 shadow-[0_10px_36px_rgba(0,0,0,0.07)]">
