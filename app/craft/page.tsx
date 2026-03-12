@@ -157,8 +157,8 @@ export default function CraftPage() {
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 pb-[clamp(90px,10vh,120px)] pt-[clamp(82px,9vh,116px)]">
         <section className="relative pb-[clamp(88px,10vh,120px)]">
-          <div className="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
-            <div>
+          <div className="group grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
+            <div className="relative">
               <h1
                 className="text-[clamp(46px,8vw,126px)] leading-[0.86] tracking-[-0.05em]"
                 style={{
@@ -170,6 +170,7 @@ export default function CraftPage() {
               >
                 ПОДХОД
               </h1>
+              <div className="pointer-events-none mt-7 h-[2px] w-[clamp(96px,18vw,180px)] origin-left scale-x-0 bg-gradient-to-r from-[#4a8fe4]/75 via-[#7a4fd8]/70 to-transparent transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100" />
             </div>
 
             <div
@@ -196,10 +197,7 @@ export default function CraftPage() {
           <div className="grid gap-10 lg:grid-cols-[minmax(190px,0.27fr)_minmax(0,0.73fr)] lg:gap-14">
             <RevealBlock className="lg:sticky lg:top-12 lg:h-fit">
               <h2 className="text-[clamp(34px,5.2vw,78px)] leading-[0.92] tracking-[-0.04em]">Как мы идём к решению</h2>
-              <p className="mt-5 max-w-[26ch] text-[15px] leading-[1.42] text-[#111]/66">
-                Каждая фаза нужна не «для галочки», а для снятия конкретного класса рисков.
-              </p>
-            </RevealBlock>
+              </RevealBlock>
 
             <motion.ol
               ref={sequenceRef}
@@ -214,30 +212,40 @@ export default function CraftPage() {
                   },
                 },
               }}
-              className="border-y border-black/12"
+              className="relative"
             >
-              {sequenceSteps.map((step) => (
+              {sequenceSteps.map((step, index) => (
                 <motion.li
                   key={step.id}
                   variants={{
-                    hidden: { opacity: 0, x: 36 },
+                    hidden: { opacity: 0, y: 26, filter: "blur(6px)" },
                     visible: {
                       opacity: 1,
-                      x: 0,
-                      transition: { duration: 0.5, ease: EASE },
+                      y: 0,
+                      filter: "blur(0px)",
+                      transition: { duration: 0.56, ease: EASE },
                     },
                   }}
-                  className="group relative grid gap-4 border-b border-black/12 py-9 last:border-b-0 md:py-12"
+                  className="group relative py-8 md:py-10"
                 >
-                  <div>
-                    <h3 className="text-[clamp(24px,3.7vw,54px)] leading-[0.98] tracking-[-0.03em]">{step.title}</h3>
-                    <p className="mt-3 max-w-[58ch] text-[clamp(15px,1.22vw,20px)] leading-[1.38] text-[#111]/72">
-                      {step.description}
-                    </p>
+                  <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(74,143,228,0.06),rgba(122,79,216,0.05),transparent)] opacity-0 transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100" />
+                  <span className="pointer-events-none absolute left-0 top-0 h-[2px] w-[clamp(92px,14vw,150px)] origin-left scale-x-0 opacity-0 bg-gradient-to-r from-[#4a8fe4]/88 via-[#7a4fd8]/80 to-transparent transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 group-hover:opacity-100" />
+                  <span className="pointer-events-none absolute right-0 top-0 h-full w-px origin-top scale-y-0 opacity-0 bg-gradient-to-b from-[#7a4fd8]/74 via-[#4a8fe4]/62 to-transparent transition-all delay-75 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100 group-hover:opacity-100" />
+                  <span
+                    className={`pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 opacity-0 bg-gradient-to-r from-transparent via-[#7a4fd8]/50 to-transparent transition-all delay-150 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 group-hover:opacity-100 ${
+                      index === sequenceSteps.length - 1 ? "hidden" : ""
+                    }`}
+                  />
+                  <div className="relative grid gap-4 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[2px] md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-8">
+                    <div className="max-w-[58ch]">
+                      <h3 className="text-[clamp(24px,3.7vw,54px)] leading-[0.98] tracking-[-0.03em] transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:text-[#111]/96">
+                        {step.title}
+                      </h3>
+                      <p className="mt-3 max-w-[58ch] text-[clamp(15px,1.22vw,20px)] leading-[1.38] text-[#111]/72 transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:text-[#111]/82">
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
-                  <span className="pointer-events-none absolute right-0 top-1/2 hidden -translate-y-1/2 text-[clamp(62px,8.6vw,128px)] leading-none tracking-[-0.05em] text-black/6 transition-colors duration-500 group-hover:text-black/10 md:block">
-                    {step.index}
-                  </span>
                 </motion.li>
               ))}
             </motion.ol>
@@ -295,9 +303,9 @@ export default function CraftPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={finalVisible ? { opacity: 1, y: 0 } : undefined}
             transition={{ duration: 0.68, ease: EASE }}
-            className="relative overflow-hidden border border-black/12 bg-[#f8f5f0]/95 px-5 py-8 md:px-10 md:py-12"
+            className="group relative overflow-hidden py-6"
           >
-            <div className="pointer-events-none absolute -right-[12%] top-1/2 h-[280px] w-[280px] -translate-y-1/2 rounded-full border border-black/8" />
+            <div className="pointer-events-none mb-6 h-[2px] w-[clamp(120px,24vw,220px)] origin-left scale-x-0 bg-gradient-to-r from-[#4a8fe4]/82 via-[#7a4fd8]/78 to-transparent transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100" />
             <h2 className="max-w-[12ch] text-[clamp(44px,8vw,126px)] leading-[0.86] tracking-[-0.05em]">
               48 часов это достаточный горизонт для сильного продукта.
             </h2>
