@@ -38,8 +38,8 @@ const miniGames: Array<{ href: string; label: string }> = [
   { href: "/minigames/match3", label: "\u0422\u0440\u0438 \u0432 \u0440\u044f\u0434" },
   { href: "/minigames/snake", label: "\u0417\u043c\u0435\u0439\u043a\u0430" },
   { href: "/minigames/2048", label: "2048" },
-  { href: "/minigames/breakout", label: "Breakout" },
-  { href: "/minigames/simon", label: "Simon" },
+  { href: "/minigames/breakout", label: "Арканоид" },
+  { href: "/minigames/simon", label: "Саймон" },
   { href: "/minigames/osu", label: "OSU-like" },
 ]
 
@@ -52,8 +52,8 @@ const achievementTypeLabels: Record<string, string> = {
   match3: "\u0422\u0440\u0438 \u0412 \u0420\u044f\u0434",
   snake: "\u0417\u043c\u0435\u0439\u043a\u0430",
   game2048: "2048",
-  breakout: "Breakout",
-  simon: "Simon",
+  breakout: "Арканоид",
+  simon: "Саймон",
   osu: "OSU-like",
 }
 
