@@ -277,8 +277,10 @@ export default function CraftPage() {
                     transition: { duration: 0.54, ease: EASE },
                   },
                 }}
-                className="grid gap-5 border-b border-black/12 py-6 last:border-b-0 md:grid-cols-[76px_minmax(0,1fr)] md:gap-8 md:items-start"
+                className="group relative grid gap-5 border-b border-black/12 py-6 last:border-b-0 md:grid-cols-[76px_minmax(0,1fr)] md:gap-8 md:items-start pl-5 pr-5"
               >
+                <span className="absolute left-0 inset-y-0 w-[2px] origin-bottom scale-y-0 rounded-full bg-gradient-to-b from-[#7a4fd8] to-[#4a8fe4] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100" />
+                <span className="absolute right-0 inset-y-0 w-[2px] origin-top scale-y-0 rounded-full bg-gradient-to-b from-[#7a4fd8] to-[#4a8fe4] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100" />
                 <span className="pointer-events-none mt-1 block select-none text-[clamp(40px,4.8vw,62px)] leading-none tracking-[-0.06em] text-black/12">
                   {String(index + 1).padStart(2, "0")}
                 </span>
