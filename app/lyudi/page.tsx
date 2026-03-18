@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react"
 import { RouteAtmosphere, type AtmosphereBlob } from "@/components/route-atmosphere"
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)"
@@ -151,6 +151,27 @@ const lyudiAtmosphereBlobs: AtmosphereBlob[] = [
     maxShift: 86,
   },
 ]
+
+function QuoteFrame({ quote, style, className = "" }: { quote: string; style?: CSSProperties; className?: string }) {
+  return (
+    <div
+      className={`relative flex items-center justify-center px-[clamp(28px,3vw,56px)] py-[clamp(24px,2.4vw,38px)] text-center ${className}`}
+      style={style}
+    >
+      <span className="pointer-events-none absolute left-0 top-0 h-px w-[clamp(54px,5vw,84px)] bg-gradient-to-r from-[#4a8fe4]/84 via-[#7a4fd8]/76 to-transparent" />
+      <span className="pointer-events-none absolute left-0 top-0 h-[clamp(34px,3.6vw,58px)] w-px bg-gradient-to-b from-[#4a8fe4]/78 via-[#7a4fd8]/70 to-transparent" />
+      <span className="pointer-events-none absolute right-0 top-0 h-px w-[clamp(54px,5vw,84px)] bg-gradient-to-l from-[#4a8fe4]/84 via-[#7a4fd8]/76 to-transparent" />
+      <span className="pointer-events-none absolute right-0 top-0 h-[clamp(34px,3.6vw,58px)] w-px bg-gradient-to-b from-[#4a8fe4]/78 via-[#7a4fd8]/70 to-transparent" />
+      <span className="pointer-events-none absolute left-0 bottom-0 h-px w-[clamp(54px,5vw,84px)] bg-gradient-to-r from-[#7a4fd8]/76 via-[#4a8fe4]/68 to-transparent" />
+      <span className="pointer-events-none absolute left-0 bottom-0 h-[clamp(34px,3.6vw,58px)] w-px bg-gradient-to-t from-[#7a4fd8]/72 via-[#4a8fe4]/64 to-transparent" />
+      <span className="pointer-events-none absolute right-0 bottom-0 h-px w-[clamp(54px,5vw,84px)] bg-gradient-to-l from-[#7a4fd8]/76 via-[#4a8fe4]/68 to-transparent" />
+      <span className="pointer-events-none absolute right-0 bottom-0 h-[clamp(34px,3.6vw,58px)] w-px bg-gradient-to-t from-[#7a4fd8]/72 via-[#4a8fe4]/64 to-transparent" />
+      <p className="relative max-w-[24ch] font-playfair text-[clamp(18px,1.55vw,34px)] leading-[1.18] text-[#111]/82 italic">
+        {quote}
+      </p>
+    </div>
+  )
+}
 
 export default function PeoplePage() {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
@@ -478,7 +499,7 @@ export default function PeoplePage() {
                   )}
                 </figure>
 
-                <div className="flex min-h-0 flex-col">
+                <div className="relative flex min-h-0 flex-col">
 
                   <h2
                     className="mt-6 text-[clamp(34px,4.2vw,62px)] leading-[0.92] tracking-[-0.04em]"
@@ -499,9 +520,11 @@ export default function PeoplePage() {
                     {person.stack}
                   </p>
 
-                  <p className="mt-6 max-w-[40ch] font-playfair text-[clamp(17px,1.44vw,22px)] leading-[1.22] text-[#111]/78 italic" style={contentMotionStyle(220)}>
-                    {person.quote}
-                  </p>
+                  <QuoteFrame
+                    quote={person.quote}
+                    style={contentMotionStyle(220)}
+                    className="mt-8 min-h-[168px] w-full max-w-[620px] self-center md:absolute md:bottom-[clamp(78px,10vh,118px)] md:left-[clamp(18px,1.8vw,34px)] md:mt-0 md:h-[clamp(180px,22vh,236px)] md:w-[clamp(360px,41vw,620px)] md:max-w-none"
+                  />
 
                   <div className="mt-auto flex flex-wrap items-center gap-x-6 gap-y-2 pt-8 text-[11px] tracking-[0.12em] text-[#111]/62 uppercase">
                     {person.githubUrl ? (

@@ -10,6 +10,17 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from "react"
 import { useProfileTracker } from "@/components/profile-provider"
+import {
+  clampBoardPanToViewport,
+  DRAG_THRESHOLD_PX,
+  getCellFontSize,
+  getCellIconSize,
+  getScaledCellSize,
+  getVisibleCellBounds,
+  normalizeUnlockedLevel,
+  shouldStartBoardDrag,
+  updateUnlockedLevel,
+} from "./board-logic"
 
 type GameStatus = "playing" | "transition" | "lost" | "won"
 
@@ -33,6 +44,7 @@ interface BoardPan {
 interface DragPanState {
   active: boolean
   moved: boolean
+  captured: boolean
   pointerId: number | null
   startX: number
   startY: number
@@ -48,10 +60,21 @@ const LEVELS: readonly LevelConfig[] = [
 ]
 
 const MIN_BOARD_SCALE = 1
-const MAX_BOARD_SCALE = 4
-const BOARD_ZOOM_SPEED = 0.0015
-const BOARD_DRAG_THRESHOLD = 6
+const MAX_BOARD_SCALE = 3
+const BOARD_ZOOM_SPEED = 0.0012
 const CLICK_SUPPRESSION_MS = 140
+const MINESWEEPER_UNLOCK_KEY = "nerior-minesweeper-unlocked-level"
+const ADJACENT_NUMBER_TONES = [
+  "",
+  "text-[#2f6df6]",
+  "text-[#27814c]",
+  "text-[#d1492f]",
+  "text-[#3d4fb8]",
+  "text-[#8a3e83]",
+  "text-[#17828b]",
+  "text-[#55504a]",
+  "text-[#1d1b18]",
+] as const
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value))
@@ -156,6 +179,7 @@ function createDragPanState(): DragPanState {
   return {
     active: false,
     moved: false,
+    captured: false,
     pointerId: null,
     startX: 0,
     startY: 0,
@@ -163,20 +187,8 @@ function createDragPanState(): DragPanState {
   }
 }
 
-function clampBoardPan(nextPan: BoardPan, scale: number, viewport: HTMLDivElement | null) {
-  if (!viewport) return nextPan
-
-  const overflowX = Math.max((viewport.clientWidth * scale - viewport.clientWidth) / 2, 0)
-  const overflowY = Math.max((viewport.clientHeight * scale - viewport.clientHeight) / 2, 0)
-
-  return {
-    x: clamp(nextPan.x, -overflowX, overflowX),
-    y: clamp(nextPan.y, -overflowY, overflowY),
-  }
-}
-
 export default function MinesweeperPage() {
-  const { data, recordGameResult } = useProfileTracker()
+  const { recordGameResult } = useProfileTracker()
 
   const [levelIndex, setLevelIndex] = useState(0)
   const [selectedStartLevel, setSelectedStartLevel] = useState(0)
@@ -186,6 +198,8 @@ export default function MinesweeperPage() {
   const [runSeconds, setRunSeconds] = useState(0)
   const [boardScale, setBoardScale] = useState(MIN_BOARD_SCALE)
   const [boardPan, setBoardPan] = useState<BoardPan>({ x: 0, y: 0 })
+  const [unlockedLevel, setUnlockedLevel] = useState(1)
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
 
   const transitionTimerRef = useRef<number | null>(null)
   const boardViewportRef = useRef<HTMLDivElement | null>(null)
@@ -196,8 +210,52 @@ export default function MinesweeperPage() {
   const reportedRef = useRef(false)
 
   const level = LEVELS[levelIndex]
-  const bestLevel = Math.min(LEVELS.length, Math.max(1, data.gameStats.minesweeper.bestScore))
-  const highestUnlockedLevel = Math.min(LEVELS.length, Math.max(bestLevel, levelIndex + 1))
+  const bestLevel = unlockedLevel
+  const highestUnlockedLevel = unlockedLevel
+  const shortestViewportPx = viewportSize.width > 0 && viewportSize.height > 0 ? Math.min(viewportSize.width, viewportSize.height) : 720
+  const cellSize = useMemo(() => getScaledCellSize(level.size, shortestViewportPx, boardScale), [level.size, shortestViewportPx, boardScale])
+  const cellFontSize = useMemo(() => getCellFontSize(cellSize), [cellSize])
+  const cellIconSize = useMemo(() => getCellIconSize(cellSize), [cellSize])
+  const boardWidth = level.size * cellSize
+  const boardHeight = level.size * cellSize
+  const isDenseBoard = cellSize <= 14 || level.size >= 50
+
+  const getClampedPan = (nextPan: BoardPan) => {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) {
+      return nextPan
+    }
+
+    return clampBoardPanToViewport(nextPan.x, nextPan.y, boardWidth, boardHeight, viewportSize.width, viewportSize.height)
+  }
+
+  const visibleBounds = useMemo(
+    () =>
+      getVisibleCellBounds(
+        level.size,
+        cellSize,
+        Math.max(viewportSize.width, 1),
+        Math.max(viewportSize.height, 1),
+        boardPan.x,
+        boardPan.y,
+      ),
+    [boardPan.x, boardPan.y, cellSize, level.size, viewportSize.height, viewportSize.width],
+  )
+
+  const visibleCells = useMemo(() => {
+    const next: Array<{ rowIndex: number; colIndex: number; cell: Cell }> = []
+
+    for (let rowIndex = visibleBounds.startRow; rowIndex <= visibleBounds.endRow; rowIndex += 1) {
+      for (let colIndex = visibleBounds.startCol; colIndex <= visibleBounds.endCol; colIndex += 1) {
+        next.push({
+          rowIndex,
+          colIndex,
+          cell: board[rowIndex][colIndex],
+        })
+      }
+    }
+
+    return next
+  }, [board, visibleBounds.endCol, visibleBounds.endRow, visibleBounds.startCol, visibleBounds.startRow])
 
   const resetBoardViewport = () => {
     dragPanRef.current = createDragPanState()
@@ -244,8 +302,36 @@ export default function MinesweeperPage() {
   }
 
   useEffect(() => {
+    const savedValue = window.localStorage.getItem(MINESWEEPER_UNLOCK_KEY)
+    setUnlockedLevel(normalizeUnlockedLevel(savedValue))
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem(MINESWEEPER_UNLOCK_KEY, String(unlockedLevel))
+  }, [unlockedLevel])
+
+  useEffect(() => {
     setSelectedStartLevel((previous) => Math.min(previous, highestUnlockedLevel - 1))
   }, [highestUnlockedLevel])
+
+  useEffect(() => {
+    const viewport = boardViewportRef.current
+    if (!viewport) return
+
+    const syncViewportSize = () => {
+      setViewportSize({
+        width: viewport.clientWidth,
+        height: viewport.clientHeight,
+      })
+    }
+
+    syncViewportSize()
+
+    const observer = new ResizeObserver(syncViewportSize)
+    observer.observe(viewport)
+
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (status !== "playing") return
@@ -264,13 +350,11 @@ export default function MinesweeperPage() {
   }, [])
 
   useEffect(() => {
-    const onResize = () => {
-      setBoardPan((previous) => clampBoardPan(previous, boardScale, boardViewportRef.current))
-    }
-
-    window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
-  }, [boardScale])
+    setBoardPan((previous) => {
+      const nextPan = getClampedPan(previous)
+      return nextPan.x === previous.x && nextPan.y === previous.y ? previous : nextPan
+    })
+  }, [boardHeight, boardWidth, viewportSize.height, viewportSize.width])
 
   const loseRun = (boardWithMines: Cell[][]) => {
     setBoard(boardWithMines)
@@ -286,6 +370,7 @@ export default function MinesweeperPage() {
     if (levelIndex === LEVELS.length - 1) {
       setBoard(clearedBoard)
       setStatus("won")
+      setUnlockedLevel((previous) => updateUnlockedLevel(previous, LEVELS.length))
       finishRun(true, LEVELS.length)
       return
     }
@@ -294,6 +379,7 @@ export default function MinesweeperPage() {
     setStatus("transition")
     transitionTimerRef.current = window.setTimeout(() => {
       const nextLevel = levelIndex + 1
+      setUnlockedLevel((previous) => updateUnlockedLevel(previous, nextLevel + 1))
       setLevelIndex(nextLevel)
       setBoard(createBlankBoard(LEVELS[nextLevel].size))
       setInitialized(false)
@@ -373,7 +459,26 @@ export default function MinesweeperPage() {
     setBoardScale((previous) => {
       const nextScale = clamp(previous - event.deltaY * BOARD_ZOOM_SPEED, MIN_BOARD_SCALE, MAX_BOARD_SCALE)
       if (nextScale !== previous) {
-        setBoardPan((currentPan) => clampBoardPan(currentPan, nextScale, boardViewportRef.current))
+        const nextCellSize = getScaledCellSize(level.size, shortestViewportPx, nextScale)
+        const nextBoardWidth = level.size * nextCellSize
+        const nextBoardHeight = level.size * nextCellSize
+
+        setBoardPan((currentPan) => {
+          if (viewportSize.width <= 0 || viewportSize.height <= 0) {
+            return currentPan
+          }
+
+          const nextPan = clampBoardPanToViewport(
+            currentPan.x,
+            currentPan.y,
+            nextBoardWidth,
+            nextBoardHeight,
+            viewportSize.width,
+            viewportSize.height,
+          )
+
+          return nextPan.x === currentPan.x && nextPan.y === currentPan.y ? currentPan : nextPan
+        })
       }
       return nextScale
     })
@@ -385,46 +490,49 @@ export default function MinesweeperPage() {
     dragPanRef.current = {
       active: true,
       moved: false,
+      captured: false,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
       startPan: boardPan,
     }
-
-    event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   const onBoardPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const dragPanState = dragPanRef.current
     if (!dragPanState.active || dragPanState.pointerId !== event.pointerId) return
+    if ((event.buttons & 1) !== 1) return
 
     const deltaX = event.clientX - dragPanState.startX
     const deltaY = event.clientY - dragPanState.startY
-    const hasMovedEnough = Math.hypot(deltaX, deltaY) >= BOARD_DRAG_THRESHOLD
+    const hasMovedEnough = shouldStartBoardDrag(deltaX, deltaY, DRAG_THRESHOLD_PX)
 
     if (!dragPanState.moved && !hasMovedEnough) return
+
+    if (!dragPanState.captured) {
+      event.currentTarget.setPointerCapture(event.pointerId)
+      dragPanState.captured = true
+    }
 
     dragPanState.moved = true
     suppressClickUntilRef.current = performance.now() + CLICK_SUPPRESSION_MS
     event.preventDefault()
 
-    setBoardPan(
-      clampBoardPan(
-        {
-          x: dragPanState.startPan.x + deltaX,
-          y: dragPanState.startPan.y + deltaY,
-        },
-        boardScale,
-        boardViewportRef.current,
-      ),
-    )
+    setBoardPan((previous) => {
+      const nextPan = getClampedPan({
+        x: dragPanState.startPan.x + deltaX,
+        y: dragPanState.startPan.y + deltaY,
+      })
+
+      return nextPan.x === previous.x && nextPan.y === previous.y ? previous : nextPan
+    })
   }
 
   const finishBoardPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     const dragPanState = dragPanRef.current
     if (!dragPanState.active || dragPanState.pointerId !== event.pointerId) return
 
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+    if (dragPanState.captured && event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
 
@@ -442,29 +550,6 @@ export default function MinesweeperPage() {
   }
 
   const flagsLeft = Math.max(0, level.mines - countFlags(board))
-
-  const boardStyle = useMemo(
-    () => ({
-      gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))`,
-      gridTemplateRows: `repeat(${level.size}, minmax(0, 1fr))`,
-    }),
-    [level.size],
-  )
-
-  const boardPanStyle = useMemo(
-    () => ({
-      transform: `translate(${boardPan.x}px, ${boardPan.y}px)`,
-    }),
-    [boardPan.x, boardPan.y],
-  )
-
-  const boardScaleStyle = useMemo(
-    () => ({
-      transform: `scale(${boardScale})`,
-      transformOrigin: "center center" as const,
-    }),
-    [boardScale],
-  )
 
   return (
     <main className="h-screen overflow-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] sm:px-3">
@@ -509,13 +594,25 @@ export default function MinesweeperPage() {
                 onPointerCancel={finishBoardPan}
                 onClickCapture={onBoardClickCapture}
               >
-                <div className="h-full w-full" style={boardPanStyle}>
-                  <div className="grid h-full w-full gap-[1px] rounded-[8px] bg-black/10 p-[1px]" style={{ ...boardStyle, ...boardScaleStyle }}>
-                    {board.flatMap((rowCells, rowIndex) =>
-                      rowCells.map((cell, colIndex) => {
+                <div
+                  className="absolute left-1/2 top-1/2"
+                  style={{
+                    transform: `translate(calc(-50% + ${boardPan.x}px), calc(-50% + ${boardPan.y}px))`,
+                  }}
+                >
+                  <div
+                    className="relative rounded-[10px] bg-black/10 p-[1px] shadow-[0_10px_28px_rgba(0,0,0,0.08)]"
+                    style={{ width: boardWidth + 2, height: boardHeight + 2 }}
+                  >
+                    <div className="relative overflow-hidden rounded-[9px] bg-[#e6ddd1]" style={{ width: boardWidth, height: boardHeight }}>
+                      {visibleCells.map(({ rowIndex, colIndex, cell }) => {
                         const cellStateClass = cell.revealed
-                          ? "border-black/8 bg-[linear-gradient(180deg,#f4efe6_0%,#e9e1d4_100%)]"
-                          : "border-black/10 bg-[linear-gradient(180deg,#ffffff_0%,#f3ecdf_100%)] hover:bg-[linear-gradient(180deg,#ffffff_0%,#efe6d7_100%)]"
+                          ? isDenseBoard
+                            ? "bg-[#e8e0d3]"
+                            : "bg-[linear-gradient(180deg,#f4efe6_0%,#e7ddcf_100%)]"
+                          : isDenseBoard
+                            ? "bg-[#fbf7ef] hover:bg-[#fffaf2]"
+                            : "bg-[linear-gradient(180deg,#ffffff_0%,#f3ecdf_100%)] hover:bg-[linear-gradient(180deg,#ffffff_0%,#efe6d7_100%)]"
 
                         return (
                           <button
@@ -524,21 +621,43 @@ export default function MinesweeperPage() {
                             draggable={false}
                             onClick={() => onReveal(rowIndex, colIndex)}
                             onContextMenu={(event) => onToggleFlag(event, rowIndex, colIndex)}
-                            className={`relative flex items-center justify-center overflow-hidden border text-[clamp(8px,0.7vw,14px)] font-semibold select-none ${cellStateClass}`}
+                            className={`absolute flex items-center justify-center overflow-hidden font-semibold leading-none select-none ${cellStateClass}`}
+                            style={{
+                              left: colIndex * cellSize,
+                              top: rowIndex * cellSize,
+                              width: cellSize,
+                              height: cellSize,
+                              fontSize: cellFontSize,
+                              boxShadow: cell.revealed
+                                ? "inset 0 0 0 1px rgba(0, 0, 0, 0.07)"
+                                : "inset 0 0 0 1px rgba(0, 0, 0, 0.12)",
+                            }}
                           >
                             {cell.flagged && !cell.revealed && (
-                              <img src="/games/miner/flag.png" alt="" draggable={false} className="h-[72%] w-[72%] object-contain" />
+                              <img
+                                src="/games/miner/flag.png"
+                                alt=""
+                                draggable={false}
+                                className="object-contain"
+                                style={{ width: cellIconSize, height: cellIconSize }}
+                              />
                             )}
                             {cell.revealed && cell.mine && (
-                              <img src="/games/miner/mine.png" alt="" draggable={false} className="h-[72%] w-[72%] object-contain" />
+                              <img
+                                src="/games/miner/mine.png"
+                                alt=""
+                                draggable={false}
+                                className="object-contain"
+                                style={{ width: cellIconSize, height: cellIconSize }}
+                              />
                             )}
                             {cell.revealed && !cell.mine && cell.adjacent > 0 && (
-                              <span className="leading-none text-black/80">{cell.adjacent}</span>
+                              <span className={ADJACENT_NUMBER_TONES[cell.adjacent] ?? "text-black/80"}>{cell.adjacent}</span>
                             )}
                           </button>
                         )
-                      }),
-                    )}
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -58,35 +58,35 @@ const materialPoints: MaterialPoint[] = [
     label: "GITHUB",
     description: "Исходный код проекта.",
     href: "https://github.com/Nerior-team",
-    position: { x: 18, y: 24 },
+    position: { x: 25, y: 28 },
   },
   {
-    id: "website",
-    label: "WEBSITE",
-    description: "Актуальная версия проекта.",
+    id: "figma",
+    label: "FIGMA",
+    description: "Дизайн интерфейса.",
+    href: "https://www.figma.com/",
+    position: { x: 71, y: 26 },
+  },
+  {
+    id: "live",
+    label: "LIVE",
+    description: "Рабочая версия продукта.",
     href: "https://nerior.ru",
-    position: { x: 78, y: 20 },
+    position: { x: 75, y: 48 },
   },
   {
-    id: "approach",
-    label: "APPROACH",
-    description: "Как команда доводит решение до MVP.",
-    href: "/craft",
-    position: { x: 84, y: 48 },
+    id: "docs",
+    label: "DOCS",
+    description: "Архитектура и документация.",
+    href: "https://github.com/Nerior-team",
+    position: { x: 28, y: 68 },
   },
   {
-    id: "team",
-    label: "TEAM",
-    description: "Люди и зоны ответственности.",
-    href: "/lyudi",
-    position: { x: 22, y: 72 },
-  },
-  {
-    id: "stack",
-    label: "STACK",
-    description: "Технологии и рабочий набор.",
-    href: "/stek",
-    position: { x: 70, y: 78 },
+    id: "presentation",
+    label: "VIDEO",
+    description: "Видео демонстрации и питч.",
+    href: "https://www.youtube.com/",
+    position: { x: 66, y: 71 },
   },
 ]
 
@@ -111,17 +111,15 @@ function DemoPanel({
     <div className="relative w-[min(72vw,980px)] max-w-full">
       <div
         ref={panelRef}
-        className="soft-gradient-card relative aspect-video overflow-hidden border border-black/0 bg-[linear-gradient(145deg,rgba(255,255,255,0.48),rgba(248,245,240,0.92))] shadow-[0_28px_72px_rgba(17,17,17,0.08)]"
+        className="relative aspect-video overflow-hidden border border-black/16 bg-[#f8f5f0]/95"
         style={{
           opacity: introVisible ? 1 : 0,
           transform: `translate3d(${translateX.toFixed(2)}px, ${translateY.toFixed(2)}px, 0) scale(${introVisible ? 1 : 0.95})`,
           transition: `opacity 540ms ${EASE} ${transitionDelay}ms, transform 540ms ${EASE} ${transitionDelay}ms`,
         }}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(150deg,rgba(255,255,255,0.54),rgba(255,255,255,0.14))]" />
-        <div className="pointer-events-none absolute inset-[5%] border border-black/0">
-          <div className="h-full w-full bg-[linear-gradient(90deg,rgba(74,143,228,0.12),rgba(122,79,216,0.1),transparent)]" />
-        </div>
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(150deg,rgba(255,255,255,0.5),rgba(255,255,255,0.14))]" />
+        <div className="pointer-events-none absolute inset-[5%] border border-black/12" />
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.26]"
           style={{
@@ -129,12 +127,14 @@ function DemoPanel({
             backgroundSize: "100% 12px",
           }}
         />
-        <div className="pointer-events-none absolute left-[8%] top-[10%] h-[2px] w-[clamp(110px,18vw,210px)] bg-gradient-to-r from-[#4a8fe4]/78 via-[#7a4fd8]/72 to-transparent" />
-        <div className="pointer-events-none absolute bottom-[12%] right-[8%] h-[2px] w-[clamp(140px,18vw,240px)] bg-gradient-to-l from-[#4a8fe4]/62 via-[#7a4fd8]/56 to-transparent" />
-        <div className="pointer-events-none absolute left-[14%] top-[22%] h-[42%] w-px bg-gradient-to-b from-[#7a4fd8]/62 via-[#4a8fe4]/34 to-transparent" />
-        <div className="pointer-events-none absolute bottom-[16%] right-[18%] h-[28%] w-px bg-gradient-to-b from-transparent via-[#4a8fe4]/30 to-[#7a4fd8]/46" />
-        <div className="relative flex h-full items-center justify-center px-6">
-          <div className="h-[48%] w-[38%] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.56)_0%,rgba(170,194,236,0.18)_34%,rgba(255,255,255,0)_78%)]" />
+        <div className="relative flex h-full items-center justify-center px-6 text-center">
+          <div>
+            <p className="text-[11px] tracking-[0.22em] text-[#111]/50 uppercase">Product Window</p>
+            <p className="mt-3 text-[clamp(22px,2.5vw,36px)] leading-[0.98] tracking-[-0.03em] text-[#111]/86 uppercase">
+              Demo Placeholder
+            </p>
+            <p className="mt-4 text-[13px] leading-[1.4] text-[#111]/56">Видео или live-прототип добавляется перед защитой.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -307,7 +307,7 @@ export default function ProjectsPage() {
             {activeLine && (
               <div className="pointer-events-none absolute inset-0">
                 <div
-                  className="absolute h-px bg-[linear-gradient(90deg,rgba(74,143,228,0.42),rgba(122,79,216,0.38),rgba(17,17,17,0))] transition-opacity duration-200"
+                  className="absolute h-px bg-black/36 transition-opacity duration-200"
                   style={{
                     left: `${activeLine.x}px`,
                     top: `${activeLine.y}px`,
@@ -375,13 +375,13 @@ export default function ProjectsPage() {
         <section className="md:hidden">
           <DemoPanel introVisible={introVisible} transitionDelay={0} />
 
-          <ul className="soft-gradient-section mt-7 py-1">
+          <ul className="mt-7 border-y border-black/12">
             {materialPoints.map((point, index) => {
               const delay = prefersReducedMotion ? 0 : 200 + index * 120
               const external = point.href.startsWith("http")
 
               return (
-                <li key={point.id} className="soft-gradient-divider relative last:after:hidden">
+                <li key={point.id} className="border-b border-black/12 last:border-b-0">
                   <a
                     href={point.href}
                     target={external ? "_blank" : undefined}
