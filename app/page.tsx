@@ -290,23 +290,21 @@ function ContactsFrame() {
         Telegram
       </a>
       <a
-        href="https://2023.rauno.me/"
+        href="https://nerior.ru"
         target="_blank"
         rel="noreferrer"
         className="absolute right-[50px] top-[50px] text-[clamp(34px,4vw,85px)] leading-none font-normal text-[#191a1e]"
       >
-        pipka
+        Website
       </a>
-      <a
-        href="https://2022.rauno.me/"
-        target="_blank"
-        rel="noreferrer"
+      <Link
+        href="/lyudi"
         className="absolute left-[50px] bottom-[50px] text-[clamp(34px,4vw,85px)] leading-none font-normal text-[#191a1e]"
       >
-        popa
-      </a>
+        Contact
+      </Link>
       <a
-        href="https://github.com/Stepa-Karpik"
+        href="https://github.com/Nerior-team"
         target="_blank"
         rel="noreferrer"
         className="absolute bottom-[50px] right-[50px] text-[clamp(34px,4vw,85px)] leading-none font-normal text-[#191a1e]"

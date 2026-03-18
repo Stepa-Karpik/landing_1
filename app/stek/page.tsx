@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { motion, useInView } from "framer-motion"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
@@ -18,7 +18,6 @@ interface StackDirection {
   index: string
   title: string
   summary: string
-  databaseScope: string
   stack: string[]
 }
 
@@ -27,65 +26,54 @@ const roleRows: RoleRow[] = [
     id: "web-frontend",
     index: "01",
     title: "Web Frontend",
-    competencies: ["React", "TypeScript", "Next.js", "Motion", "UI/UX", "PostgreSQL", "Delivery"],
+    competencies: ["React", "Next.js", "TypeScript", "Tailwind CSS", "Framer Motion", "Delivery"],
   },
   {
     id: "web-backend",
     index: "02",
     title: "Web Backend",
-    competencies: ["Node.js", "Express", "Python", "FastAPI", "Flask", "GraphQL", "REST API", "Security", "PostgreSQL"],
+    competencies: ["Python", "Node.js", "FastAPI", "REST API", "PostgreSQL", "Docker", "Security"],
   },
   {
-    id: "product-design",
+    id: "design",
     index: "03",
-    title: "Product Design",
-    competencies: ["Figma", "Design Systems", "Motion", "Prototype", "UI/UX", "Delivery", "Design QA"],
+    title: "Design",
+    competencies: ["Figma", "Photoshop", "Illustrator", "Motion", "Prototype", "Design Systems", "OpenAI"],
   },
   {
     id: "mobile-android",
     index: "04",
     title: "Mobile Android",
-    competencies: ["Kotlin", "Jetpack Compose", "Coroutines", "Retrofit", "API Integration", "Delivery", "PostgreSQL"],
-  },
-  {
-    id: "design",
-    index: "05",
-    title: "Design",
-    competencies: ["Figma", "PowerPoint", "Photoshop", "Illustrator", "Nano Banana", "Motion", "UI/UX", "Pitch", "Delivery"],
+    competencies: ["Kotlin", "Jetpack Compose", "Coroutines", "Retrofit", "API Integration", "Delivery"],
   },
 ]
 
 const competencyTags = [
   "React",
-  "Python",
-  "Figma",
-  "Kotlin",
-  "TypeScript",
-  "FastAPI",
-  "PowerPoint",
-  "Jetpack Compose",
   "Next.js",
-  "Express",
-  "Photoshop",
-  "GraphQL",
-  "Nano Banana",
-  "Coroutines",
-  "Flask",
-  "Illustrator",
-  "Retrofit",
+  "TypeScript",
+  "Tailwind CSS",
+  "Framer Motion",
+  "Python",
   "Node.js",
-  "Motion",
-  "Design Systems",
-  "Prototype",
-  "Design QA",
+  "FastAPI",
   "REST API",
-  "CSS3",
   "PostgreSQL",
-  "SASS",
-  "UI/UX",
+  "Docker",
   "Security",
+  "Figma",
+  "Photoshop",
+  "Illustrator",
+  "Motion",
+  "Prototype",
+  "Design Systems",
+  "OpenAI",
+  "Kotlin",
+  "Jetpack Compose",
+  "Coroutines",
+  "Retrofit",
+  "API Integration",
   "Delivery",
-  "Pitch",
 ]
 
 const stackDirections: StackDirection[] = [
@@ -93,116 +81,53 @@ const stackDirections: StackDirection[] = [
     id: "web-frontend",
     index: "01",
     title: "Web Frontend",
-    summary: "Системный frontend-контур с быстрым delivery и сильной визуальной подачей.",
-    databaseScope: " ",
+    summary: "Интерфейсный слой, который ощущается цельным, быстрым и собранным даже в спринтовом темпе.",
     stack: [
       "React",
-      "TypeScript",
       "Next.js",
-      "Vite",
-      "CSS3",
-      "SASS",
+      "TypeScript",
       "Tailwind CSS",
       "Framer Motion",
-      "GSAP",
-      "Zustand",
-      "Redux Toolkit",
-      "TanStack Query",
-      "SWR",
-      "React Hook Form",
-      "Zod",
-      "Storybook",
-      "Radix UI",
-      "shadcn/ui",
-      "Web Vitals",
-      "Lighthouse",
-      "PWA",
-      "SSR",
-      "ISR",
-      "SSG",
-      "i18n",
-      "Playwright",
-      "Vitest",
-      "Cypress",
-      "Socket.IO Client",
-      "WebSocket",
-      "Figma Tokens",
-      "Design QA",
+      "Responsive UI",
+      "Animation Systems",
+      "UI Systems",
+      "Performance",
+      "Delivery",
     ],
   },
   {
     id: "web-backend",
     index: "02",
     title: "Web Backend",
-    summary: "Backend-слой с архитектурой под рост, стабильностью и безопасностью.",
-    databaseScope: " ",
+    summary: "Backend-контур без лишнего шума: надежные API, понятные данные и спокойная работа под нагрузкой.",
     stack: [
-      "Node.js",
-      "Express",
-      "Fastify",
-      "NestJS",
-      "TypeScript",
       "Python",
+      "Node.js",
       "FastAPI",
-      "Flask",
-      "Django REST",
-      "GraphQL",
       "REST API",
-      "gRPC",
-      "WebSocket Gateway",
-      "OpenAPI",
-      "Swagger",
-      "Pydantic",
-      "SQLAlchemy",
-      "Prisma",
-      "Alembic",
       "PostgreSQL",
-      "PostGIS",
-      "Query Optimization",
-      "Connection Pooling",
-      "JWT/Auth",
-      "OAuth2",
-      "Rate Limiting",
-      "Background Jobs",
-      "RabbitMQ",
-      "Celery",
       "Docker",
-      "Nginx",
-      "CI/CD",
-      "Sentry",
-      "Prometheus",
-      "Grafana",
-      "Pytest",
-      "Jest",
+      "Security",
+      "Service Contracts",
+      "Data Modeling",
+      "API Reliability",
     ],
   },
   {
-    id: "product-design",
+    id: "design",
     index: "03",
-    title: "Product Design",
-    summary: "Продуктовый дизайн-контур с сильной структурой интерфейса, motion-ритмом и подготовкой к разработке.",
-    databaseScope: " ",
+    title: "Design",
+    summary: "Визуальный и продуктовый дизайн, который помогает продукту выглядеть уверенно уже с первой демонстрации.",
     stack: [
       "Figma",
-      "Design Systems",
-      "Auto Layout",
-      "Interactive Prototypes",
-      "User Flows",
-      "Wireframes",
-      "Information Architecture",
-      "Component Libraries",
+      "Photoshop",
+      "Illustrator",
       "Motion",
       "Prototype",
-      "Design QA",
-      "Usability Testing",
-      "Presentation Systems",
-      "Adobe Photoshop",
-      "Adobe Illustrator",
-      "Nano Banana",
+      "Design Systems",
       "OpenAI",
-      "Lottie",
-      "Accessibility",
-      "Handoff Specs",
+      "Presentation Design",
+      "Design QA",
       "Delivery-ready Assets",
     ],
   },
@@ -210,83 +135,22 @@ const stackDirections: StackDirection[] = [
     id: "mobile-android",
     index: "04",
     title: "Mobile Android",
-    summary: "Android-контур на Kotlin/Compose с современным UI и контролируемой архитектурой.",
-    databaseScope: " ",
+    summary: "Android-реализация с чистым ритмом интерфейса, предсказуемой архитектурой и нормальной скоростью релиза.",
     stack: [
       "Kotlin",
       "Jetpack Compose",
-      "Android SDK",
       "Coroutines",
-      "Flow",
       "Retrofit",
-      "OkHttp",
-      "Ktor Client",
-      "MVVM",
-      "Clean Architecture",
-      "Hilt",
-      "Koin",
-      "Navigation Component",
-      "WorkManager",
-      "Material 3",
-      "Room",
-      "Android Studio",
-      "Gradle",
-      "KSP",
-      "Lottie",
-      "Coil",
-      "Firebase Crashlytics",
-      "Push Notifications",
-      "Deep Links",
-      "Play Console",
-      "Macrobenchmark",
-      "Espresso",
-      "Unit Testing",
-      "UI Testing",
-      "Room-ready Architecture",
       "API Integration",
-    ],
-  },
-  {
-    id: "design",
-    index: "05",
-    title: "Design",
-    summary: "Визуальный контур для продукта и защиты: от UX-каркаса до pitch-материалов.",
-    databaseScope: " ",
-    stack: [
-      "Figma",
-      "FigJam",
-      "Auto Layout",
-      "Components",
-      "Variants",
-      "Design Tokens",
-      "Prototype",
-      "Interaction Design",
-      "PowerPoint",
-      "Pitch Deck",
-      "Keynote",
-      "Adobe Photoshop",
-      "Adobe Illustrator",
-      "Adobe After Effects",
-      "Nano Banana",
-      "Runway",
-      "Midjourney",
-      "Rive",
-      "Framer",
-      "Motion Specs",
-      "Icon Systems",
-      "Typography Systems",
-      "Grid Systems",
-      "Wireframing",
-      "User Flow",
-      "Information Architecture",
-      "Brand Systems",
-      "Visual Storytelling",
-      "Presentation Design",
-      "Design QA",
-      "UX Research",
+      "Android SDK",
+      "Performance",
+      "Release Readiness",
+      "Delivery",
     ],
   },
 ]
+
+const sharedDataChips = ["Web Backend", "Mobile Android", "Web Frontend", "Contracts", "API Flow"]
 
 const stekAtmosphereBlobs: AtmosphereBlob[] = [
   {
@@ -367,15 +231,14 @@ function TechLane({
 
   return (
     <div
-      className="relative overflow-hidden border-b border-black/18 last:border-b-0"
+      className="soft-gradient-divider relative overflow-hidden"
       style={{
         maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
         WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
       }}
     >
-
       <div
-        className="flex w-max items-center gap-3.5 py-3.5 md:py-4 animate-marquee"
+        className="animate-marquee flex w-max items-center gap-3.5 py-3.5 md:py-4"
         style={{
           animationDuration: `${duration}s`,
           animationDirection: direction === "right" ? "reverse" : "normal",
@@ -384,7 +247,7 @@ function TechLane({
         {repeatedItems.map((item, index) => (
           <span
             key={`${item}-${index}`}
-            className="shrink-0 rounded-full border border-black/16 bg-[#f6f4ef] px-4 py-1.5 text-[12px] tracking-[0.1em] text-[#111]/74 uppercase md:px-5 md:py-2 md:text-[13px]"
+            className="soft-gradient-chip shrink-0 rounded-full px-4 py-1.5 text-[12px] tracking-[0.1em] text-[#111]/74 uppercase md:px-5 md:py-2 md:text-[13px]"
           >
             {item}
           </span>
@@ -400,32 +263,29 @@ function StackDirectionShowcase({ direction, index }: { direction: StackDirectio
   const lanes = useMemo(() => buildMarqueeLanes(direction.stack), [direction.stack])
 
   return (
-    <div className="flex justify-center">
-      <motion.section
-        ref={ref}
-        initial={{ opacity: 0, y: 22 }}
-        animate={isInView ? { opacity: 1, y: 0 } : undefined}
-        transition={{ duration: 0.56, delay: index * 0.08, ease: REVEAL_EASE }}
-        className="w-full"
-      >
-        <div className="grid gap-4 md:grid-cols-[minmax(260px,0.34fr)_minmax(0,0.66fr)] md:items-end md:gap-10">
+    <motion.section
+      ref={ref}
+      initial={{ opacity: 0, y: 22 }}
+      animate={isInView ? { opacity: 1, y: 0 } : undefined}
+      transition={{ duration: 0.56, delay: index * 0.08, ease: REVEAL_EASE }}
+      className="soft-gradient-card soft-gradient-rails rounded-[28px] bg-[linear-gradient(145deg,rgba(255,255,255,0.34),rgba(248,246,241,0.84))] px-[clamp(18px,3vw,34px)] py-[clamp(20px,3.2vw,34px)] shadow-[0_24px_60px_rgba(17,17,17,0.05)]"
+    >
+      <div className="grid gap-4 md:grid-cols-[92px_minmax(0,1fr)] md:items-start md:gap-8">
+        <span className="text-[11px] tracking-[0.22em] text-[#111]/46 uppercase">{direction.index}</span>
+        <div>
           <h2 className="text-[clamp(32px,3.9vw,58px)] leading-[0.9] tracking-[-0.03em] font-semibold text-[#111111]">
             {direction.title}
           </h2>
-          <p className="max-w-[62ch] text-[clamp(16px,1.35vw,22px)] leading-[1.32] text-[#111]/78">{direction.summary}</p>
+          <p className="mt-3 max-w-[62ch] text-[clamp(16px,1.35vw,22px)] leading-[1.32] text-[#111]/78">{direction.summary}</p>
         </div>
+      </div>
 
-        <div className="mt-5 border-y border-black/20">
-          <TechLane items={lanes[0]} direction="right" duration={42 + index * 2} />
-          <TechLane items={lanes[1]} direction="left" duration={36 + index * 2} />
-          <TechLane items={lanes[2]} direction="right" duration={46 + index * 2} />
-        </div>
-
-        {direction.databaseScope.trim().length > 0 && (
-          <p className="mt-4 text-[11px] leading-[1.5] tracking-[0.12em] text-[#111]/56 uppercase">{direction.databaseScope}</p>
-        )}
-      </motion.section>
-    </div>
+      <div className="soft-gradient-section mt-6 py-1">
+        <TechLane items={lanes[0]} direction="right" duration={42 + index * 2} />
+        <TechLane items={lanes[1]} direction="left" duration={36 + index * 2} />
+        <TechLane items={lanes[2]} direction="right" duration={46 + index * 2} />
+      </div>
+    </motion.section>
   )
 }
 
@@ -468,36 +328,41 @@ export default function StackPage() {
   return (
     <main className="relative isolate min-h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
       <RouteAtmosphere blobs={stekAtmosphereBlobs} />
+
       <div className="relative z-10 mx-auto max-w-6xl px-6 pb-[clamp(90px,10vh,120px)] pt-[clamp(82px,9vh,116px)]">
         <section className="pb-[clamp(88px,10vh,120px)]">
           <div className="grid gap-10 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] xl:items-end xl:gap-12">
-            <h1
-              className="min-w-0 max-w-[11ch] text-[clamp(42px,6.2vw,92px)] leading-[0.86] tracking-[-0.045em]"
-              style={{
-                opacity: introVisible ? 1 : 0,
-                transform: introVisible ? "translateY(0px)" : "translateY(40px)",
-                transition: `opacity 520ms cubic-bezier(0.22,1,0.36,1), transform 520ms cubic-bezier(0.22,1,0.36,1)`,
-              }}
-            >
-              СТЭК ТЕХНОЛОГИЙ
-            </h1>
+            <div>
+              <h1
+                className="min-w-0 max-w-[11ch] text-[clamp(42px,6.2vw,92px)] leading-[0.86] tracking-[-0.045em]"
+                style={{
+                  opacity: introVisible ? 1 : 0,
+                  transform: introVisible ? "translateY(0px)" : "translateY(40px)",
+                  transition: `opacity 520ms cubic-bezier(0.22,1,0.36,1), transform 520ms cubic-bezier(0.22,1,0.36,1)`,
+                }}
+              >
+                СТЭК
+              </h1>
+              <div className="pointer-events-none mt-7 h-[2px] w-[clamp(104px,18vw,188px)] bg-gradient-to-r from-[#4a8fe4]/76 via-[#7a4fd8]/72 to-transparent" />
+            </div>
 
             <p
-              className="min-w-0 max-w-[38ch] text-[clamp(18px,2.2vw,30px)] leading-[1.2] tracking-[-0.02em] text-[#111]/82 xl:justify-self-end"
+              className="min-w-0 max-w-[40ch] text-[clamp(18px,2.2vw,30px)] leading-[1.2] tracking-[-0.02em] text-[#111]/82 xl:justify-self-end"
               style={{
                 opacity: introVisible ? 1 : 0,
                 transition: `opacity 420ms cubic-bezier(0.22,1,0.36,1) 140ms`,
               }}
             >
-              Система под капотом. Мы используем лучшие решения для быстрого и качественного выполнения задач.
+              Мы не коллекционируем технологии. Берем только тот набор, который помогает быстрее собрать сильный продукт и спокойно довести его до релиза или защиты.
             </p>
           </div>
         </section>
 
-        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
+        <section className="soft-gradient-section py-[clamp(88px,10vh,120px)]">
           <FadeInBlock>
             <div className="grid gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
               <div>
+                <p className="text-[11px] tracking-[0.22em] text-[#111]/46 uppercase">Направления</p>
                 <div className="mt-7">
                   {roleRows.map((role) => {
                     const highlighted = isRoleHighlighted(role)
@@ -521,16 +386,16 @@ export default function StackPage() {
                           setActiveCompetency(null)
                           setActiveRoleId((previous) => (previous === role.id ? null : role.id))
                         }}
-                        className="w-full border-b border-black/12 bg-transparent py-4 text-left transition-[opacity,transform,border-color] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-black/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                        className="soft-gradient-divider group relative w-full bg-transparent py-4 text-left transition-[opacity,transform] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
                         style={{
                           opacity: highlighted ? 1 : 0.34,
                           transform: `translateY(${highlighted ? 0 : 6}px)`,
                         }}
                       >
-                        <div className="flex gap-4 md:items-baseline md:gap-7">
-                          <span className="text-[clamp(20px,2.7vw,34px)] leading-[1.08] tracking-[-0.02em]">
-                            {role.title}
-                          </span>
+                        <span className="pointer-events-none absolute left-0 top-0 h-[2px] w-[clamp(86px,14vw,132px)] origin-left scale-x-0 bg-gradient-to-r from-[#4a8fe4]/78 via-[#7a4fd8]/70 to-transparent transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100" />
+                        <div className="grid gap-2 md:grid-cols-[76px_minmax(0,1fr)] md:items-baseline">
+                          <span className="text-[11px] tracking-[0.22em] text-[#111]/42 uppercase">{role.index}</span>
+                          <span className="text-[clamp(20px,2.7vw,34px)] leading-[1.08] tracking-[-0.02em]">{role.title}</span>
                         </div>
                       </button>
                     )
@@ -539,6 +404,7 @@ export default function StackPage() {
               </div>
 
               <div>
+                <p className="text-[11px] tracking-[0.22em] text-[#111]/46 uppercase">Рабочий набор</p>
                 <div className="mt-7 flex flex-wrap gap-2.5">
                   {competencyTags.map((competency) => {
                     const highlighted = isCompetencyHighlighted(competency)
@@ -562,11 +428,10 @@ export default function StackPage() {
                           setActiveRoleId(null)
                           setActiveCompetency((previous) => (previous === competency ? null : competency))
                         }}
-                        className="rounded-full border bg-transparent px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase transition-[opacity,transform,border-color] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                        className="soft-gradient-chip rounded-full px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase transition-[opacity,transform,border-color,box-shadow] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
                         style={{
                           opacity: highlighted ? 1 : 0.32,
                           transform: `translateY(${highlighted ? 0 : 6}px)`,
-                          borderColor: highlighted ? "rgba(17,17,17,0.24)" : "rgba(17,17,17,0.14)",
                         }}
                       >
                         {competency}
@@ -579,7 +444,7 @@ export default function StackPage() {
           </FadeInBlock>
         </section>
 
-        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
+        <section className="soft-gradient-section py-[clamp(88px,10vh,120px)]">
           <div className="space-y-4 md:space-y-6">
             {stackDirections.map((direction, index) => (
               <StackDirectionShowcase key={direction.id} direction={direction} index={index} />
@@ -587,48 +452,39 @@ export default function StackPage() {
           </div>
         </section>
 
-        <section className="border-t border-black/12 py-[clamp(88px,10vh,120px)]">
+        <section className="soft-gradient-section py-[clamp(88px,10vh,120px)]">
           <FadeInBlock>
-            <article className="rounded-[24px] border border-black/12 bg-[#f8f6f1]/96 p-[clamp(18px,3vw,34px)]">
+            <article className="soft-gradient-card soft-gradient-rails rounded-[28px] bg-[linear-gradient(145deg,rgba(255,255,255,0.38),rgba(248,246,241,0.9))] p-[clamp(18px,3vw,34px)] shadow-[0_24px_60px_rgba(17,17,17,0.05)]">
+              <div className="mb-6 h-[2px] w-[clamp(116px,22vw,208px)] bg-gradient-to-r from-[#4a8fe4]/78 via-[#7a4fd8]/72 to-transparent" />
+              <p className="text-[11px] tracking-[0.22em] text-[#111]/46 uppercase">Общая основа</p>
               <h2 className="mt-3 text-[clamp(30px,4.2vw,64px)] leading-[0.9] tracking-[-0.03em]">PostgreSQL</h2>
               <p className="mt-4 max-w-[58ch] text-[clamp(16px,1.45vw,22px)] leading-[1.28] text-[#111]/82">
-                PostgreSQL используется как единая база данных для web и Android-контуров. Design-направления не
-                работают с базой напрямую, но учитывают data-flow в интерфейсных и презентационных сценариях.
+                Данные держатся на одной спокойной основе: backend отвечает за модель и логику, Android и web работают через понятные контракты, а дизайн учитывает этот flow еще до разработки.
               </p>
               <div className="mt-6 flex flex-wrap gap-2.5">
-                <span className="rounded-full border border-black/18 px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase">
-                  Web Frontend
-                </span>
-                <span className="rounded-full border border-black/18 px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase">
-                  Web Backend
-                </span>
-                <span className="rounded-full border border-black/18 px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase">
-                  Product Design
-                </span>
-                <span className="rounded-full border border-black/18 px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase">
-                  Mobile Android
-                </span>
-                <span className="rounded-full border border-black/10 px-3.5 py-1.5 text-[11px] tracking-[0.11em] text-[#111]/48 uppercase">
-                  Design (без прямого доступа)
-                </span>
+                {sharedDataChips.map((item) => (
+                  <span key={item} className="soft-gradient-chip rounded-full px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase">
+                    {item}
+                  </span>
+                ))}
               </div>
             </article>
           </FadeInBlock>
         </section>
 
-        <section ref={finalRef} className="border-t border-black/12 pt-[clamp(88px,10vh,120px)]">
+        <section ref={finalRef} className="soft-gradient-section pt-[clamp(88px,10vh,120px)]">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={finalInView ? { opacity: 1, y: 0 } : undefined}
             transition={{ duration: 0.56, ease: REVEAL_EASE }}
-            className="max-w-[66ch]"
+            className="max-w-[62ch] pb-6"
           >
+            <div className="mb-6 h-[2px] w-[clamp(120px,24vw,220px)] bg-gradient-to-r from-[#4a8fe4]/82 via-[#7a4fd8]/78 to-transparent" />
             <h2 className="text-[clamp(38px,7.3vw,108px)] leading-[0.88] tracking-[-0.045em]">
-              НАШ ТЕХНОЛОГИЧЕСКИЙ ПОТЕНЦИАЛ
+              Технологии здесь работают вместе, а не спорят друг с другом.
             </h2>
-            <p className="mt-6 max-w-[44ch] text-[clamp(17px,2vw,28px)] leading-[1.2] tracking-[-0.02em] text-[#111]/82">
-              Каждая из технологий решает свою задачу в рамках общего подхода. Результат: быстро, эффективно и с
-              высоким качеством.
+            <p className="mt-6 max-w-[46ch] text-[clamp(17px,2vw,28px)] leading-[1.2] tracking-[-0.02em] text-[#111]/82">
+              Поэтому продукт собирается быстрее, выглядит цельнее и ощущается уверенно уже в первом рабочем показе.
             </p>
           </motion.div>
         </section>

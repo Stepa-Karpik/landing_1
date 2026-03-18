@@ -106,7 +106,7 @@ export const teamMembers: TeamMember[] = [
     name: "Мелихова Анастасия",
     role: "Дизайнер",
     focus: "Создание интуитивно понятного и красивого интерфейса для всех вариантов приложения.",
-    stack: ["Figma", "Photoshop", "Motion", "OpenAI"],
+    stack: ["Figma", "Photoshop", "Illustrator", "Motion", "OpenAI"],
     achievement: "Проектирует интерфейсы и визуальные сценарии для demo-ready продуктов",
     links: [
       { label: "Telegram", url: "https://t.me/wwhat123" },
@@ -115,10 +115,10 @@ export const teamMembers: TeamMember[] = [
   {
     id: "tatyana-popova",
     name: "Татьяна Попова",
-    role: "Продуктовый дизайнер",
-    focus: "Дизайн-системы, пользовательские сценарии и визуальная упаковка продукта под demo и релиз.",
-    stack: ["Figma", "Design Systems", "UI/UX", "Motion"],
-    achievement: "Собирает интерфейсные и презентационные макеты под быстрый запуск",
+    role: "Backend разработчик",
+    focus: "Качество API, надежность сервисов и оптимизация производительности.",
+    stack: ["Python", "FastAPI", "PostgreSQL", "Docker", "REST"],
+    achievement: "Проектирует отказоустойчивые API для мультисервисных решений",
     links: [
       { label: "Telegram", url: "https://t.me/angrybiirds" },
     ],
@@ -144,7 +144,7 @@ export const teamMembers: TeamMember[] = [
     achievement: "Проектировал и внедрял премиальные лендинги и продуктовые UI",
     links: [
       { label: "GitHub", url: "https://github.com" },
-      { label: "Портфолио", url: "https://example.com" },
+      { label: "Портфолио", url: "https://nerior.ru" },
     ],
   },
 ]
@@ -300,8 +300,8 @@ export const cultureValues = [
 export const contactLinks = [
   {
     label: "GitHub команды",
-    value: "github.com/nerior",
-    href: "https://github.com",
+    value: "github.com/Nerior-team",
+    href: "https://github.com/Nerior-team",
   },
   {
     label: "Telegram",

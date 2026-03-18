@@ -68,7 +68,7 @@ const teamPeople: PersonCard[] = [
     name: "Мелихова Анастасия",
     role: "Дизайнер",
     focus: "Создание интуитивно понятного и красивого интерфейса для всех вариантов приложения.",
-    stack: "Figma, Photoshop, Motion, OpenAI",
+    stack: "Figma, Photoshop, Illustrator, Motion, OpenAI",
     quote: "Надежность начинается с ясных интерфейсов.",
     photoSrc: "/media/Melihova.jpg",
     telegramUrl: "https://t.me/wwhat123",
@@ -76,13 +76,13 @@ const teamPeople: PersonCard[] = [
   {
     id: "tatyana-popova",
     number: "04",
-    status: "DESIGN",
+    status: "BACKEND",
     monogram: "ПТ",
     name: "Попова Татьяна",
-    role: "Продуктовый дизайнер",
-    focus: "Дизайн-системы, пользовательские сценарии и визуальная упаковка продукта под demo и релиз.",
-    stack: "Figma · Design Systems · UI/UX · Motion ·",
-    quote: "Интерфейс должен объяснять себя сам.",
+    role: "Backend разработчик",
+    focus: "Качество API, надежность сервисов и оптимизация производительности.",
+    stack: "Python · FastAPI · PostgreSQL · Docker · REST ·",
+    quote: "Надежный backend не видно. И именно поэтому он нужен.",
     photoSrc: "/media/Popova.jpg",
     telegramUrl: "https://t.me/angrybiirds",
   },
@@ -395,19 +395,22 @@ export default function PeoplePage() {
         style={{ paddingInline: railPadding }}
       >
         <section
-          className={`relative flex shrink-0 items-end border border-black/12 bg-[#f8f5f0]/74 px-[clamp(30px,5vw,82px)] py-[clamp(30px,6vh,72px)] ${PANEL_SIZE_CLASS}`}
+          className={`soft-gradient-card soft-gradient-rails relative flex shrink-0 items-end border border-black/0 bg-[linear-gradient(145deg,rgba(255,255,255,0.46),rgba(248,245,240,0.82))] px-[clamp(30px,5vw,82px)] py-[clamp(30px,6vh,72px)] shadow-[0_26px_70px_rgba(17,17,17,0.06)] ${PANEL_SIZE_CLASS}`}
         >
           <div className="grid w-full gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,0.96fr)] md:items-end md:gap-14">
-            <h1
-              className="text-[clamp(52px,13vw,196px)] leading-[0.82] tracking-[-0.055em]"
-              style={{
-                opacity: introVisible ? 1 : 0,
-                transform: introVisible ? "translateY(0px)" : "translateY(24px)",
-                transition: `opacity 450ms ${EASE}, transform 450ms ${EASE}`,
-              }}
-            >
-              ЛЮДИ
-            </h1>
+            <div>
+              <h1
+                className="text-[clamp(52px,13vw,196px)] leading-[0.82] tracking-[-0.055em]"
+                style={{
+                  opacity: introVisible ? 1 : 0,
+                  transform: introVisible ? "translateY(0px)" : "translateY(24px)",
+                  transition: `opacity 450ms ${EASE}, transform 450ms ${EASE}`,
+                }}
+              >
+                ЛЮДИ
+              </h1>
+              <div className="pointer-events-none mt-7 h-[2px] w-[clamp(96px,18vw,180px)] bg-gradient-to-r from-[#4a8fe4]/75 via-[#7a4fd8]/70 to-transparent" />
+            </div>
 
             <p
               className="max-w-[32ch] text-[clamp(20px,2.5vw,34px)] leading-[1.14] tracking-[-0.02em] text-[#111]/82"
@@ -417,8 +420,8 @@ export default function PeoplePage() {
                 transition: `opacity 450ms ${EASE} 90ms, transform 450ms ${EASE} 90ms`,
               }}
             >
-              <span className="block">6 человек. Один темп.</span>
-              <span className="block">Одна ответственность за результат.</span>
+              <span className="block">6 ролей. Один ритм.</span>
+              <span className="block">Каждый слой продукта закрыт вовремя и без суеты.</span>
             </p>
           </div>
         </section>
@@ -442,11 +445,10 @@ export default function PeoplePage() {
               ref={(element) => {
                 cardRefs.current[index] = element
               }}
-              className={`relative shrink-0 border bg-[#f8f5f0]/70 p-[clamp(22px,2.9vw,38px)] transition-[opacity,transform,border-color,box-shadow] duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${PANEL_SIZE_CLASS}`}
+              className={`soft-gradient-card soft-gradient-rails relative shrink-0 border border-black/0 bg-[linear-gradient(145deg,rgba(255,255,255,0.4),rgba(248,245,240,0.8))] p-[clamp(22px,2.9vw,38px)] transition-[opacity,transform,border-color,box-shadow] duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${PANEL_SIZE_CLASS}`}
               style={{
                 opacity: baseOpacity,
                 transform: `scale(${baseScale})`,
-                borderColor: `rgba(17,17,17,${0.14 + focus * 0.16})`,
                 boxShadow: `0 14px 32px rgba(0,0,0,${0.014 + focus * 0.03})`,
               }}
             >
@@ -454,7 +456,7 @@ export default function PeoplePage() {
                 {person.status}
               </span>
               <div className="grid h-full gap-[clamp(18px,2.3vw,34px)] md:grid-cols-[minmax(260px,0.36fr)_minmax(0,0.64fr)]">
-                <figure className="relative h-full min-h-[220px] overflow-hidden rounded-[26px] border border-black/12 bg-[#eceae5]">
+                <figure className="soft-gradient-card relative h-full min-h-[220px] overflow-hidden rounded-[26px] border border-black/0 bg-[#eceae5]">
                   {person.photoSrc ? (
                     <>
                       <Image
@@ -507,12 +509,12 @@ export default function PeoplePage() {
                         href={person.githubUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-block border-b border-black/24 pb-[2px] transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                        className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
                       >
                         GitHub
                       </a>
                     ) : (
-                      <span className="inline-block border-b border-black/24 pb-[2px] text-[#111]/46">GitHub — placeholder</span>
+                      <span className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.22),rgba(122,79,216,0.18),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] text-[#111]/46">GitHub — placeholder</span>
                     )}
 
                     {person.telegramUrl ? (
@@ -520,12 +522,12 @@ export default function PeoplePage() {
                         href={person.telegramUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-block border-b border-black/24 pb-[2px] transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                        className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
                       >
                         Telegram
                       </a>
                     ) : (
-                      <span className="inline-block border-b border-black/24 pb-[2px] text-[#111]/46">Telegram — placeholder</span>
+                      <span className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.22),rgba(122,79,216,0.18),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] text-[#111]/46">Telegram — placeholder</span>
                     )}
 
                     {person.email ? (
@@ -534,12 +536,12 @@ export default function PeoplePage() {
                         onClick={() => {
                           void handleCopyEmail(person.id, person.email)
                         }}
-                        className="inline-block border-b border-black/24 pb-[2px] transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                        className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
                       >
                         {copiedEmailId === person.id ? "Email — copied" : "Email — copy"}
                       </button>
                     ) : (
-                      <span className="inline-block border-b border-black/24 pb-[2px] text-[#111]/46">Email — placeholder</span>
+                      <span className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.22),rgba(122,79,216,0.18),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] text-[#111]/46">Email — placeholder</span>
                     )}
                   </div>
                 </div>
@@ -550,9 +552,10 @@ export default function PeoplePage() {
 
         <section
           ref={finalRef}
-          className={`relative flex shrink-0 items-end border border-black/12 bg-[#f8f5f0]/74 px-[clamp(30px,5vw,82px)] py-[clamp(30px,6vh,72px)] ${PANEL_SIZE_CLASS}`}
+          className={`soft-gradient-card soft-gradient-rails relative flex shrink-0 items-end border border-black/0 bg-[linear-gradient(145deg,rgba(255,255,255,0.42),rgba(248,245,240,0.82))] px-[clamp(30px,5vw,82px)] py-[clamp(30px,6vh,72px)] shadow-[0_26px_70px_rgba(17,17,17,0.06)] ${PANEL_SIZE_CLASS}`}
         >
           <div className="max-w-[70ch]">
+            <div className="mb-6 h-[2px] w-[clamp(120px,24vw,220px)] bg-gradient-to-r from-[#4a8fe4]/82 via-[#7a4fd8]/78 to-transparent" />
             <h2
               className="text-[clamp(44px,8vw,122px)] leading-[0.88] tracking-[-0.05em]"
               style={{
@@ -572,8 +575,8 @@ export default function PeoplePage() {
                 transition: `opacity 420ms ${EASE} 80ms, transform 420ms ${EASE} 80ms`,
               }}
             >
-              <span className="block">В 48 часов решает не героизм.</span>
-              <span className="block">Решает структура, роли и темп.</span>
+              <span className="block">В решающие 48 часов работает не шум.</span>
+              <span className="block">Работают роли, темп и доверие внутри команды.</span>
             </p>
           </div>
         </section>
