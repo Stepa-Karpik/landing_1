@@ -42,7 +42,7 @@ const montserrat = Montserrat({
 })
 
 export const metadata: Metadata = {
-  title: "TEAM NERIOR - Инженерия идей в реальность",
+  title: "NERIOR",
   description:
     "Хакатон-ориентированная продуктовая команда: AI, backend-архитектура, дизайн-системы и быстрый запуск MVP.",
   icons: {
