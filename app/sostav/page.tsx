@@ -33,10 +33,10 @@ const roleRows: RoleRow[] = [
     competencies: ["Backend", "Web", "Security", "Delivery"],
   },
   {
-    id: "ios",
+    id: "design",
     index: "04",
-    title: "iOS",
-    competencies: ["Mobile iOS", "UI/UX", "Delivery"],
+    title: "Design",
+    competencies: ["Design Systems", "UI/UX", "Motion", "Delivery"],
   },
   {
     id: "android-kotlin",
@@ -60,7 +60,7 @@ const competencyTags = [
   "Backend",
   "Frontend",
   "Web",
-  "Mobile iOS",
+  "Design Systems",
   "Mobile Android",
   "UI/UX",
   "Security",
@@ -173,7 +173,7 @@ export default function SostavPage() {
 
             <FadeInBlock delay={0.08}>
               <p className="max-w-[42ch] text-[clamp(18px,2.2vw,30px)] leading-[1.24] text-[#111]/82">
-                1 ИП + 5 разработчиков-студентов. Закрываем продукт целиком: от архитектуры до упаковки. Работаем
+                1 ИП + 5 специалистов. Закрываем продукт целиком: от архитектуры до упаковки. Работаем
                 быстро, чисто и системно.
               </p>
             </FadeInBlock>

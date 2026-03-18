@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useMemo,
@@ -73,7 +74,7 @@ interface BeatSlider extends BeatNoteBase {
 
 type BeatObject = BeatCircle | BeatSlider
 
-interface RuntimeNote extends BeatObject {
+type RuntimeNote = BeatObject & {
   index: number
   judged: Judgement | null
   judgedAtMs: number | null
@@ -228,6 +229,18 @@ const SLIDER_TAIL_BUFFER_MS: Record<Difficulty, number> = {
   hard: 76,
   extreme: 58,
   legend: 45,
+}
+
+const OSU_SURFACE_STYLE: CSSProperties = {
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  WebkitTouchCallout: "none",
+  WebkitTapHighlightColor: "transparent",
+}
+
+const OSU_GAME_SURFACE_STYLE: CSSProperties = {
+  ...OSU_SURFACE_STYLE,
+  touchAction: "none",
 }
 
 const CIRCLE_COLORS = ["#ff5f87", "#6fa8ff", "#78d8a6", "#f6b26b", "#c993ff"] as const
@@ -1736,7 +1749,7 @@ export default function OsuLikePage() {
     const session = gameSessionRef.current
     if (!session) return []
     const timelineMs = phase === "paused" ? session.pausedOffsetMs : renderNowMs
-    const baseRadius = noteRadiusPx({ tMs: 0, x: 0.5, y: 0.5 }, session.settings, fieldSize.width, fieldSize.height)
+    const baseRadius = noteRadiusPx({ kind: "circle", tMs: 0, x: 0.5, y: 0.5 }, session.settings, fieldSize.width, fieldSize.height)
     return session.effects
       .map((effect, index) => {
         const age = timelineMs - effect.startedMs
@@ -2590,7 +2603,10 @@ export default function OsuLikePage() {
     : undefined
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 pb-8 pt-20 text-[#111111] md:px-8" style={menuBackgroundStyle}>
+    <main
+      className="relative min-h-screen overflow-hidden px-4 pb-8 pt-20 text-[#111111] select-none md:px-8"
+      style={{ ...menuBackgroundStyle, ...OSU_SURFACE_STYLE }}
+    >
       {selectionStage && (
         <>
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_30%,rgba(255,255,255,0.08),transparent_40%)]" />
@@ -2853,7 +2869,12 @@ export default function OsuLikePage() {
         )}
 
         {(phase === "playing" || phase === "paused" || phase === "results") && (
-          <section ref={gameplayRootRef} className="fixed inset-0 z-[80] h-[100dvh] overflow-hidden bg-[#140914]">
+          <section
+            ref={gameplayRootRef}
+            className="fixed inset-0 z-[80] h-[100dvh] overflow-hidden bg-[#140914] select-none"
+            style={OSU_GAME_SURFACE_STYLE}
+            onContextMenu={(event) => event.preventDefault()}
+          >
             <div ref={canvasWrapRef} className="relative h-full w-full overflow-hidden bg-black">
               {selectedBackground?.kind === "video" && (
                 <video src={selectedBackground.src} className="absolute inset-0 h-full w-full object-cover" muted loop autoPlay playsInline />
@@ -2866,7 +2887,8 @@ export default function OsuLikePage() {
 
               <canvas
                 ref={canvasRef}
-                className={`absolute inset-0 z-10 h-full w-full touch-none ${phase === "playing" ? "cursor-none" : ""}`}
+                className={`absolute inset-0 z-10 h-full w-full touch-none select-none ${phase === "playing" ? "cursor-none" : ""}`}
+                style={OSU_GAME_SURFACE_STYLE}
                 onPointerDown={onCanvasPointerDown}
                 onPointerMove={onCanvasPointerMove}
                 onPointerUp={onCanvasPointerUp}

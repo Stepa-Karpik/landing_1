@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, useInView } from "framer-motion"
-import { type ReactNode, useEffect, useRef, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { RouteAtmosphere, type AtmosphereBlob } from "@/components/route-atmosphere"
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -129,9 +129,11 @@ function RevealBlock({
 
 export default function CraftPage() {
   const [introVisible, setIntroVisible] = useState(false)
+  const [activeHoverTargetId, setActiveHoverTargetId] = useState<string | null>(null)
   const sequenceRef = useRef<HTMLOListElement | null>(null)
   const protocolRef = useRef<HTMLUListElement | null>(null)
   const finalRef = useRef<HTMLElement | null>(null)
+  const pointerRef = useRef({ x: 0, y: 0, active: false })
 
   const sequenceVisible = useInView(sequenceRef, { once: true, margin: "-90px" })
   const protocolVisible = useInView(protocolRef, { once: true, margin: "-90px" })
@@ -151,13 +153,63 @@ export default function CraftPage() {
     return () => window.cancelAnimationFrame(frameId)
   }, [])
 
+  const syncHoverTarget = useCallback(() => {
+    if (!pointerRef.current.active) {
+      setActiveHoverTargetId((previous) => (previous === null ? previous : null))
+      return
+    }
+
+    const hoveredElement = document.elementFromPoint(pointerRef.current.x, pointerRef.current.y) as HTMLElement | null
+    const nextTargetId = hoveredElement?.closest<HTMLElement>("[data-craft-hover-target]")?.dataset.craftHoverTarget ?? null
+
+    setActiveHoverTargetId((previous) => (previous === nextTargetId ? previous : nextTargetId))
+  }, [])
+
+  useEffect(() => {
+    const onPointerMove = (event: PointerEvent) => {
+      pointerRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+        active: true,
+      }
+      syncHoverTarget()
+    }
+
+    const onPointerOut = (event: PointerEvent) => {
+      if (event.relatedTarget !== null) return
+      pointerRef.current.active = false
+      setActiveHoverTargetId(null)
+    }
+
+    const onViewportShift = () => {
+      if (!pointerRef.current.active) return
+      syncHoverTarget()
+    }
+
+    window.addEventListener("pointermove", onPointerMove, { passive: true })
+    window.addEventListener("pointerout", onPointerOut)
+    window.addEventListener("scroll", onViewportShift, { passive: true })
+    window.addEventListener("resize", onViewportShift, { passive: true })
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove)
+      window.removeEventListener("pointerout", onPointerOut)
+      window.removeEventListener("scroll", onViewportShift)
+      window.removeEventListener("resize", onViewportShift)
+    }
+  }, [syncHoverTarget])
+
   return (
     <main className="relative isolate min-h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
       <RouteAtmosphere blobs={craftAtmosphereBlobs} />
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 pb-[clamp(90px,10vh,120px)] pt-[clamp(82px,9vh,116px)]">
         <section className="relative pb-[clamp(88px,10vh,120px)]">
-          <div className="group grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
+          <div
+            data-craft-hover-target="intro"
+            data-active={activeHoverTargetId === "intro" ? "true" : undefined}
+            className="group grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end"
+          >
             <div className="relative">
               <h1
                 className="text-[clamp(46px,8vw,126px)] leading-[0.86] tracking-[-0.05em]"
@@ -170,7 +222,7 @@ export default function CraftPage() {
               >
                 ПОДХОД
               </h1>
-              <div className="pointer-events-none mt-7 h-[2px] w-[clamp(96px,18vw,180px)] origin-left scale-x-0 bg-gradient-to-r from-[#4a8fe4]/75 via-[#7a4fd8]/70 to-transparent transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100" />
+              <div className="pointer-events-none mt-7 h-[2px] w-[clamp(96px,18vw,180px)] origin-left scale-x-0 bg-gradient-to-r from-[#4a8fe4]/75 via-[#7a4fd8]/70 to-transparent transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 group-data-[active=true]:scale-x-100" />
             </div>
 
             <div
@@ -226,22 +278,24 @@ export default function CraftPage() {
                       transition: { duration: 0.56, ease: EASE },
                     },
                   }}
+                  data-craft-hover-target={step.id}
+                  data-active={activeHoverTargetId === step.id ? "true" : undefined}
                   className="group relative py-8 md:py-10"
                 >
-                  <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(74,143,228,0.06),rgba(122,79,216,0.05),transparent)] opacity-0 transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100" />
-                  <span className="pointer-events-none absolute left-0 top-0 h-[2px] w-[clamp(92px,14vw,150px)] origin-left scale-x-0 opacity-0 bg-gradient-to-r from-[#4a8fe4]/88 via-[#7a4fd8]/80 to-transparent transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 group-hover:opacity-100" />
-                  <span className="pointer-events-none absolute right-0 top-0 h-full w-px origin-top scale-y-0 opacity-0 bg-gradient-to-b from-[#7a4fd8]/74 via-[#4a8fe4]/62 to-transparent transition-all delay-75 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100 group-hover:opacity-100" />
+                  <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(74,143,228,0.06),rgba(122,79,216,0.05),transparent)] opacity-0 transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100 group-data-[active=true]:opacity-100" />
+                  <span className="pointer-events-none absolute left-0 top-0 h-[2px] w-[clamp(92px,14vw,150px)] origin-left scale-x-0 opacity-0 bg-gradient-to-r from-[#4a8fe4]/88 via-[#7a4fd8]/80 to-transparent transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 group-hover:opacity-100 group-data-[active=true]:scale-x-100 group-data-[active=true]:opacity-100" />
+                  <span className="pointer-events-none absolute right-0 top-0 h-full w-px origin-top scale-y-0 opacity-0 bg-gradient-to-b from-[#7a4fd8]/74 via-[#4a8fe4]/62 to-transparent transition-all delay-75 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100 group-hover:opacity-100 group-data-[active=true]:scale-y-100 group-data-[active=true]:opacity-100" />
                   <span
-                    className={`pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 opacity-0 bg-gradient-to-r from-transparent via-[#7a4fd8]/50 to-transparent transition-all delay-150 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 group-hover:opacity-100 ${
+                    className={`pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 opacity-0 bg-gradient-to-r from-transparent via-[#7a4fd8]/50 to-transparent transition-all delay-150 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 group-hover:opacity-100 group-data-[active=true]:scale-x-100 group-data-[active=true]:opacity-100 ${
                       index === sequenceSteps.length - 1 ? "hidden" : ""
                     }`}
                   />
-                  <div className="relative grid gap-4 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[2px] md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-8">
+                  <div className="relative grid gap-4 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[2px] group-data-[active=true]:translate-x-[2px] md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-8">
                     <div className="max-w-[58ch]">
-                      <h3 className="text-[clamp(24px,3.7vw,54px)] leading-[0.98] tracking-[-0.03em] transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:text-[#111]/96">
+                      <h3 className="text-[clamp(24px,3.7vw,54px)] leading-[0.98] tracking-[-0.03em] transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:text-[#111]/96 group-data-[active=true]:text-[#111]/96">
                         {step.title}
                       </h3>
-                      <p className="mt-3 max-w-[58ch] text-[clamp(15px,1.22vw,20px)] leading-[1.38] text-[#111]/72 transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:text-[#111]/82">
+                      <p className="mt-3 max-w-[58ch] text-[clamp(15px,1.22vw,20px)] leading-[1.38] text-[#111]/72 transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:text-[#111]/82 group-data-[active=true]:text-[#111]/82">
                         {step.description}
                       </p>
                     </div>
@@ -285,10 +339,12 @@ export default function CraftPage() {
                     transition: { duration: 0.54, ease: EASE },
                   },
                 }}
+                data-craft-hover-target={line.id}
+                data-active={activeHoverTargetId === line.id ? "true" : undefined}
                 className="group relative grid gap-5 border-b border-black/12 py-6 last:border-b-0 md:grid-cols-[76px_minmax(0,1fr)] md:gap-8 md:items-start pl-5 pr-5"
               >
-                <span className="absolute left-0 inset-y-0 w-[2px] origin-bottom scale-y-0 rounded-full bg-gradient-to-b from-[#7a4fd8] to-[#4a8fe4] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100" />
-                <span className="absolute right-0 inset-y-0 w-[2px] origin-top scale-y-0 rounded-full bg-gradient-to-b from-[#7a4fd8] to-[#4a8fe4] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100" />
+                <span className="absolute left-0 inset-y-0 w-[2px] origin-bottom scale-y-0 rounded-full bg-gradient-to-b from-[#7a4fd8] to-[#4a8fe4] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100 group-data-[active=true]:scale-y-100" />
+                <span className="absolute right-0 inset-y-0 w-[2px] origin-top scale-y-0 rounded-full bg-gradient-to-b from-[#7a4fd8] to-[#4a8fe4] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100 group-data-[active=true]:scale-y-100" />
                 <span className="pointer-events-none mt-1 block select-none text-[clamp(40px,4.8vw,62px)] leading-none tracking-[-0.06em] text-black/12">
                   {String(index + 1).padStart(2, "0")}
                 </span>
@@ -300,12 +356,14 @@ export default function CraftPage() {
 
         <section ref={finalRef} className="border-t border-black/12 pt-[clamp(88px,10vh,120px)]">
           <motion.article
+            data-craft-hover-target="final"
+            data-active={activeHoverTargetId === "final" ? "true" : undefined}
             initial={{ opacity: 0, y: 20 }}
             animate={finalVisible ? { opacity: 1, y: 0 } : undefined}
             transition={{ duration: 0.68, ease: EASE }}
             className="group relative overflow-hidden py-6"
           >
-            <div className="pointer-events-none mb-6 h-[2px] w-[clamp(120px,24vw,220px)] origin-left scale-x-0 bg-gradient-to-r from-[#4a8fe4]/82 via-[#7a4fd8]/78 to-transparent transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100" />
+            <div className="pointer-events-none mb-6 h-[2px] w-[clamp(120px,24vw,220px)] origin-left scale-x-0 bg-gradient-to-r from-[#4a8fe4]/82 via-[#7a4fd8]/78 to-transparent transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 group-data-[active=true]:scale-x-100" />
             <h2 className="max-w-[12ch] text-[clamp(44px,8vw,126px)] leading-[0.86] tracking-[-0.05em]">
               48 часов это достаточный горизонт для сильного продукта.
             </h2>

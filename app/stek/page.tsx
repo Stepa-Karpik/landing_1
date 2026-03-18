@@ -36,10 +36,10 @@ const roleRows: RoleRow[] = [
     competencies: ["Node.js", "Express", "Python", "FastAPI", "Flask", "GraphQL", "REST API", "Security", "PostgreSQL"],
   },
   {
-    id: "mobile-ios",
+    id: "product-design",
     index: "03",
-    title: "Mobile iOS",
-    competencies: ["Swift", "SwiftUI", "Objective-C", "UIKit", "API Integration", "Delivery", "PostgreSQL"],
+    title: "Product Design",
+    competencies: ["Figma", "Design Systems", "Motion", "Prototype", "UI/UX", "Delivery", "Design QA"],
   },
   {
     id: "mobile-android",
@@ -59,17 +59,14 @@ const competencyTags = [
   "React",
   "Python",
   "Figma",
-  "Swift",
   "Kotlin",
   "TypeScript",
   "FastAPI",
   "PowerPoint",
-  "SwiftUI",
   "Jetpack Compose",
   "Next.js",
   "Express",
   "Photoshop",
-  "Objective-C",
   "GraphQL",
   "Nano Banana",
   "Coroutines",
@@ -78,6 +75,9 @@ const competencyTags = [
   "Retrofit",
   "Node.js",
   "Motion",
+  "Design Systems",
+  "Prototype",
+  "Design QA",
   "REST API",
   "CSS3",
   "PostgreSQL",
@@ -177,42 +177,33 @@ const stackDirections: StackDirection[] = [
     ],
   },
   {
-    id: "mobile-ios",
+    id: "product-design",
     index: "03",
-    title: "Mobile iOS",
-    summary: "Нативный iOS-контур с фокусом на качество UX и стабильную доставку фич.",
+    title: "Product Design",
+    summary: "Продуктовый дизайн-контур с сильной структурой интерфейса, motion-ритмом и подготовкой к разработке.",
     databaseScope: " ",
     stack: [
-      "Swift",
-      "SwiftUI",
-      "Objective-C",
-      "UIKit",
-      "Combine",
-      "Async/Await",
-      "URLSession",
-      "Alamofire",
-      "MVVM",
-      "Coordinator",
-      "Dependency Injection",
-      "Xcode",
-      "Swift Package Manager",
-      "CocoaPods",
-      "TestFlight",
-      "Fastlane",
+      "Figma",
+      "Design Systems",
+      "Auto Layout",
+      "Interactive Prototypes",
+      "User Flows",
+      "Wireframes",
+      "Information Architecture",
+      "Component Libraries",
+      "Motion",
+      "Prototype",
+      "Design QA",
+      "Usability Testing",
+      "Presentation Systems",
+      "Adobe Photoshop",
+      "Adobe Illustrator",
+      "Nano Banana",
+      "OpenAI",
       "Lottie",
-      "MapKit",
-      "CoreLocation",
-      "Push Notifications",
-      "Deep Links",
-      "WidgetKit",
-      "App Clips",
       "Accessibility",
-      "Instruments",
-      "Snapshot Testing",
-      "UI Testing",
-      "Unit Testing",
-      "API Integration",
-      "Delivery Build",
+      "Handoff Specs",
+      "Delivery-ready Assets",
     ],
   },
   {
@@ -601,8 +592,8 @@ export default function StackPage() {
             <article className="rounded-[24px] border border-black/12 bg-[#f8f6f1]/96 p-[clamp(18px,3vw,34px)]">
               <h2 className="mt-3 text-[clamp(30px,4.2vw,64px)] leading-[0.9] tracking-[-0.03em]">PostgreSQL</h2>
               <p className="mt-4 max-w-[58ch] text-[clamp(16px,1.45vw,22px)] leading-[1.28] text-[#111]/82">
-                PostgreSQL используется как единая база данных для web и mobile-контуров. Design-направление не работает
-                с базой напрямую, но учитывает data-flow в интерфейсных и презентационных сценариях.
+                PostgreSQL используется как единая база данных для web и Android-контуров. Design-направления не
+                работают с базой напрямую, но учитывают data-flow в интерфейсных и презентационных сценариях.
               </p>
               <div className="mt-6 flex flex-wrap gap-2.5">
                 <span className="rounded-full border border-black/18 px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase">
@@ -612,7 +603,7 @@ export default function StackPage() {
                   Web Backend
                 </span>
                 <span className="rounded-full border border-black/18 px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase">
-                  Mobile iOS
+                  Product Design
                 </span>
                 <span className="rounded-full border border-black/18 px-3.5 py-1.5 text-[11px] tracking-[0.11em] uppercase">
                   Mobile Android

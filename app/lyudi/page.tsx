@@ -17,7 +17,7 @@ const WHEEL_LINE_HEIGHT = 16
 interface PersonCard {
   id: string
   number: string
-  status: "TEAM" | "BUSINESS" | "BACKEND" | "IOS" | "ANDROID" | "FRONTEND"
+  status: "TEAM" | "BUSINESS" | "BACKEND" | "DESIGN" | "ANDROID" | "FRONTEND"
   monogram: string
   name: string
   role: string
@@ -61,28 +61,28 @@ const teamPeople: PersonCard[] = [
     email: "Vladislav.mirono2015@yandex.ru",
   },
   {
-    id: "vladislava-kuznetsova",
+    id: "Melihova-Anastasiya",
     number: "03",
-    status: "BACKEND",
-    monogram: "КВ",
-    name: "Кузнецова Владислава",
-    role: "Backend разработчик",
-    focus: "Отвечает за стабильные API, предсказуемые интеграции и контроль надежности сервисного слоя.",
-    stack: "Python · FastAPI · PostgreSQL · Redis · Docker ·",
+    status: "DESIGN",
+    monogram: "МА",
+    name: "Мелихова Анастасия",
+    role: "Дизайнер",
+    focus: "Создание интуитивно понятного и красивого интерфейса для всех вариантов приложения.",
+    stack: "Figma, Photoshop, Motion, OpenAI",
     quote: "Надежность начинается с ясных интерфейсов.",
-    photoSrc: "/media/Kuznecsova.jpg",
-    telegramUrl: "https://t.me/prettyyflack0",
+    photoSrc: "/media/Melihova.jpg",
+    telegramUrl: "https://t.me/wwhat123",
   },
   {
     id: "tatyana-popova",
     number: "04",
-    status: "IOS",
+    status: "DESIGN",
     monogram: "ПТ",
     name: "Попова Татьяна",
-    role: "Мобильный разработчик iOS",
-    focus: "Фокус на мобильном UX: быстро собирает экранные потоки и доводит интерфейс до уверенного качества.",
-    stack: "Swift · SwiftUI · UIKit · iOS SDK · Xcode ·",
-    quote: "Удобство проверяется в каждом жесте.",
+    role: "Продуктовый дизайнер",
+    focus: "Дизайн-системы, пользовательские сценарии и визуальная упаковка продукта под demo и релиз.",
+    stack: "Figma · Design Systems · UI/UX · Motion ·",
+    quote: "Интерфейс должен объяснять себя сам.",
     photoSrc: "/media/Popova.jpg",
     telegramUrl: "https://t.me/angrybiirds",
   },

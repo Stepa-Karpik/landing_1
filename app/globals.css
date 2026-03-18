@@ -303,6 +303,11 @@ body::before {
   }
 }
 
+body[data-route-cursor-mode="minigame"] [data-global-cursor-orb="1"] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
 body[data-osu-cursor-mode="game"] [data-global-cursor="1"] {
   opacity: 0 !important;
   visibility: hidden !important;

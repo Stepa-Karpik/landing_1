@@ -77,7 +77,7 @@ const stages: Stage[] = [
   },
   {
     id: "idea",
-    time: "первые 1–2 часа",
+    time: "1 час",
     title: "ИДЕЯ",
     points: ["перебор вариантов", "выбор одного решения", "формулировка ценности"],
     desktop: { x: 34, y: 16, side: "left" },
@@ -85,7 +85,7 @@ const stages: Stage[] = [
   },
   {
     id: "analysis",
-    time: "2–4 час",
+    time: "2 час",
     title: "АНАЛИЗ",
     points: ["что важно жюри", "данные / риски", "план MVP"],
     desktop: { x: 66, y: 27, side: "right" },
@@ -93,7 +93,7 @@ const stages: Stage[] = [
   },
   {
     id: "architecture",
-    time: "4–6 час",
+    time: "3-4 час",
     title: "АРХИТЕКТУРА",
     points: ["схема модулей", "контракты API", "роли и ответственность"],
     desktop: { x: 40, y: 38, side: "left" },
@@ -101,15 +101,15 @@ const stages: Stage[] = [
   },
   {
     id: "ux",
-    time: "8 час",
+    time: "4 час",
     title: "UX / ДИЗАЙН",
-    points: ["ключевые сценарии", "каркас интерфейса", "прототип"],
+    points: ["ключевые сценарии", "каркас интерфейса", "Первые концепты"],
     desktop: { x: 62, y: 48, side: "right" },
     mobile: { x: 52, y: 48 },
   },
   {
     id: "mvp",
-    time: "6–20 час",
+    time: "5–15 час",
     title: "MVP",
     points: ["ядро продукта", "первый рабочий контур", "сборка демо-сценария"],
     desktop: { x: 33, y: 60, side: "left" },
@@ -117,7 +117,7 @@ const stages: Stage[] = [
   },
   {
     id: "integrations",
-    time: "20–30 час",
+    time: "15–30 час",
     title: "ИНТЕГРАЦИИ",
     points: ["фронт ↔ бек", "база / кэш", "стабильность данных"],
     desktop: { x: 60, y: 71, side: "right" },
@@ -125,7 +125,7 @@ const stages: Stage[] = [
   },
   {
     id: "polish",
-    time: "30–40 час",
+    time: "30-48 час",
     title: "ПОЛИРОВКА",
     points: ["фиксы", "UX доводка", "подготовка к показу"],
     desktop: { x: 42, y: 82, side: "left" },
@@ -133,7 +133,7 @@ const stages: Stage[] = [
   },
   {
     id: "defense",
-    time: "40–48 час",
+    time: "48 час",
     title: "ЗАЩИТА",
     points: ["сторителлинг", "финальная демонстрация", "презентация"],
     desktop: { x: 54, y: 91, side: "right" },

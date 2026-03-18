@@ -1,5 +1,6 @@
 "use client"
 
+import { usePathname } from "next/navigation"
 import { useEffect, useRef } from "react"
 
 const TRIANGLE_ROTATION_DEG = 0
@@ -19,8 +20,22 @@ function isInteractiveElement(startElement: Element | null) {
 }
 
 export function CustomCursor() {
+  const pathname = usePathname()
   const shapeRef = useRef<HTMLDivElement | null>(null)
   const orbRef = useRef<HTMLDivElement | null>(null)
+  const isMinigameRoute = pathname.startsWith("/minigames/")
+
+  useEffect(() => {
+    if (isMinigameRoute) {
+      document.body.setAttribute("data-route-cursor-mode", "minigame")
+    } else {
+      document.body.removeAttribute("data-route-cursor-mode")
+    }
+
+    return () => {
+      document.body.removeAttribute("data-route-cursor-mode")
+    }
+  }, [isMinigameRoute])
 
   useEffect(() => {
     const canUseFinePointer = window.matchMedia("(hover: hover) and (pointer: fine)")
