@@ -25,6 +25,7 @@ interface PersonCard {
   stack: string
   quote: string
   photoSrc?: string
+  githubLabel?: string
   githubUrl?: string
   telegramUrl?: string
   email?: string
@@ -40,7 +41,7 @@ const teamPeople: PersonCard[] = [
     role: "Team Lead",
     focus: "Собирает системную архитектуру, держит темп команды и доводит MVP до цельного продукта с чистым UI.",
     stack: "Python · React · JavaScript · Node.js · TypeScript · C++ · aiogram · UI/UX · Figma ·",
-    quote: "Сначала структура, потом скорость.",
+    quote: "Panta rhei — всё течёт, всё изменяется",
     photoSrc: "/media/Karpov.jpg",
     githubUrl: "https://github.com/Stepa-Karpik",
     telegramUrl: "https://t.me/Karpov_Stepan",
@@ -55,8 +56,9 @@ const teamPeople: PersonCard[] = [
     role: "Backend разработчик / менеджмент и управление бизнесом",
     focus: "Связывает бизнес-задачи с технической реализацией: выстраивает приоритеты, контролирует сроки и отвечает за бэкенд-контур продукта.",
     stack: "Python · FastAPI · Product Delivery · Management ·",
-    quote: "Решение должно выдерживать и рынок, и дедлайн.",
+    quote: "Не стоит стоять на устоях застоя",
     photoSrc: "/media/Bogdan.jpg",
+    githubUrl: "https://github.com/Vladick-Pick",
     telegramUrl: "https://t.me/VlBogdan",
     email: "Vladislav.mirono2015@yandex.ru",
   },
@@ -69,8 +71,9 @@ const teamPeople: PersonCard[] = [
     role: "Дизайнер",
     focus: "Создание интуитивно понятного и красивого интерфейса для всех вариантов приложения.",
     stack: "Figma, Photoshop, Illustrator, Motion, OpenAI",
-    quote: "Надежность начинается с ясных интерфейсов.",
+    quote: "Хороший интерфейс не требует объяснений",
     photoSrc: "/media/Melihova.jpg",
+    githubLabel: "Figma",
     telegramUrl: "https://t.me/wwhat123",
   },
   {
@@ -82,8 +85,9 @@ const teamPeople: PersonCard[] = [
     role: "Backend разработчик",
     focus: "Качество API, надежность сервисов и оптимизация производительности.",
     stack: "Python · FastAPI · PostgreSQL · Docker · REST ·",
-    quote: "Надежный backend не видно. И именно поэтому он нужен.",
+    quote: "Лучший backend тот, которого не замечают",
     photoSrc: "/media/Popova.jpg",
+    githubUrl: "https://github.com/TanyaP09",
     telegramUrl: "https://t.me/angrybiirds",
   },
   {
@@ -95,8 +99,9 @@ const teamPeople: PersonCard[] = [
     role: "Мобильный разработчик Kotlin (Android)",
     focus: "Держит производительность Android-части, выстраивает чистую архитектуру и снижает риски на релизе.",
     stack: "Kotlin · Android · Jetpack Compose · Coroutines · Retrofit ·",
-    quote: "Стабильность важнее случайной скорости.",
+    quote: "Работает – не трогай",
     photoSrc: "/media/Mihajlov.png",
+    githubUrl: "https://github.com/MihaylovvvR1",
     telegramUrl: "https://t.me/rimmtyr",
   },
   {
@@ -108,8 +113,9 @@ const teamPeople: PersonCard[] = [
     role: "Frontend разработчик",
     focus: "Собирает выразительный UI, аккуратную анимацию и интеграции без визуального шума и версточных компромиссов.",
     stack: "React · Next.js · TypeScript · UI Systems · Motion ·",
-    quote: "Деталь видна даже в темпе.",
+    quote: "Код ошибок не прощает", 
     photoSrc: "/media/Linevich.jpg",
+    githubUrl: "https://github.com/wxstmoon",
     telegramUrl: "https://t.me/wxstmoon",
   },
 ]
@@ -526,18 +532,20 @@ export default function PeoplePage() {
                     className="mt-8 min-h-[168px] w-full max-w-[620px] self-center md:absolute md:bottom-[clamp(78px,10vh,118px)] md:left-[clamp(18px,1.8vw,34px)] md:mt-0 md:h-[clamp(180px,22vh,236px)] md:w-[clamp(360px,41vw,620px)] md:max-w-none"
                   />
 
-                  <div className="mt-auto flex flex-wrap items-center gap-x-6 gap-y-2 pt-8 text-[11px] tracking-[0.12em] text-[#111]/62 uppercase">
+                  <div className="mt-auto flex flex-wrap items-center gap-x-6 gap-y-2 pt-8 text-[11px] tracking-[0.12em] text-[#111]/62 uppercase md:self-end md:flex-nowrap md:justify-end">
                     {person.githubUrl ? (
                       <a
                         href={person.githubUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                        className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-colors duration-200 hover:text-black focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
                       >
-                        GitHub
+                        {person.githubLabel ?? "GitHub"}
                       </a>
                     ) : (
-                      <span className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.22),rgba(122,79,216,0.18),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] text-[#111]/46">GitHub — placeholder</span>
+                      <span className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.22),rgba(122,79,216,0.18),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] text-[#111]/46">
+                        {person.githubLabel ?? "GitHub — placeholder"}
+                      </span>
                     )}
 
                     {person.telegramUrl ? (
@@ -545,7 +553,7 @@ export default function PeoplePage() {
                         href={person.telegramUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                        className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-colors duration-200 hover:text-black focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
                       >
                         Telegram
                       </a>
@@ -559,7 +567,7 @@ export default function PeoplePage() {
                         onClick={() => {
                           void handleCopyEmail(person.id, person.email)
                         }}
-                        className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                        className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-colors duration-200 hover:text-black focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
                       >
                         {copiedEmailId === person.id ? "Email — copied" : "Email — copy"}
                       </button>
