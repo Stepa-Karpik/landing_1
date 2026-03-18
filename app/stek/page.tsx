@@ -50,29 +50,29 @@ const roleRows: RoleRow[] = [
 
 const competencyTags = [
   "React",
-  "Next.js",
-  "TypeScript",
-  "Tailwind CSS",
-  "Framer Motion",
   "Python",
-  "Node.js",
-  "FastAPI",
-  "REST API",
-  "PostgreSQL",
-  "Docker",
-  "Security",
   "Figma",
-  "Photoshop",
-  "Illustrator",
-  "Motion",
-  "Prototype",
-  "Design Systems",
-  "OpenAI",
   "Kotlin",
+  "Next.js",
+  "Node.js",
+  "Photoshop",
   "Jetpack Compose",
+  "TypeScript",
+  "FastAPI",
+  "Illustrator",
   "Coroutines",
+  "Tailwind CSS",
+  "REST API",
+  "Motion",
   "Retrofit",
+  "Framer Motion",
+  "PostgreSQL",
+  "Prototype",
   "API Integration",
+  "OpenAI",
+  "Docker",
+  "Design Systems",
+  "Security",
   "Delivery",
 ]
 
@@ -231,7 +231,7 @@ function TechLane({
 
   return (
     <div
-      className="soft-gradient-divider relative overflow-hidden"
+      className="relative overflow-hidden"
       style={{
         maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
         WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
@@ -247,9 +247,11 @@ function TechLane({
         {repeatedItems.map((item, index) => (
           <span
             key={`${item}-${index}`}
-            className="soft-gradient-chip shrink-0 rounded-full px-4 py-1.5 text-[12px] tracking-[0.1em] text-[#111]/74 uppercase md:px-5 md:py-2 md:text-[13px]"
+            className="relative shrink-0 rounded-full bg-[linear-gradient(135deg,rgba(74,143,228,0.34),rgba(122,79,216,0.28),rgba(255,255,255,0.42))] p-px"
           >
-            {item}
+            <span className="block rounded-full bg-[linear-gradient(145deg,rgba(255,255,255,0.32),rgba(255,255,255,0.12))] px-4 py-1.5 text-[12px] tracking-[0.1em] text-[#111]/74 uppercase backdrop-blur-[16px] [-webkit-backdrop-filter:blur(16px)] md:px-5 md:py-2 md:text-[13px]">
+              {item}
+            </span>
           </span>
         ))}
       </div>
@@ -268,19 +270,13 @@ function StackDirectionShowcase({ direction, index }: { direction: StackDirectio
       initial={{ opacity: 0, y: 22 }}
       animate={isInView ? { opacity: 1, y: 0 } : undefined}
       transition={{ duration: 0.56, delay: index * 0.08, ease: REVEAL_EASE }}
-      className="soft-gradient-card soft-gradient-rails rounded-[28px] bg-[linear-gradient(145deg,rgba(255,255,255,0.34),rgba(248,246,241,0.84))] px-[clamp(18px,3vw,34px)] py-[clamp(20px,3.2vw,34px)] shadow-[0_24px_60px_rgba(17,17,17,0.05)]"
+      className="px-[clamp(4px,0.7vw,8px)] py-[clamp(8px,1vw,12px)]"
     >
-      <div className="grid gap-4 md:grid-cols-[92px_minmax(0,1fr)] md:items-start md:gap-8">
-        <span className="text-[11px] tracking-[0.22em] text-[#111]/46 uppercase">{direction.index}</span>
-        <div>
-          <h2 className="text-[clamp(32px,3.9vw,58px)] leading-[0.9] tracking-[-0.03em] font-semibold text-[#111111]">
-            {direction.title}
-          </h2>
-          <p className="mt-3 max-w-[62ch] text-[clamp(16px,1.35vw,22px)] leading-[1.32] text-[#111]/78">{direction.summary}</p>
-        </div>
-      </div>
+      <h2 className="text-[clamp(32px,3.9vw,58px)] leading-[0.9] tracking-[-0.03em] font-semibold text-[#111111]">
+        {direction.title}
+      </h2>
 
-      <div className="soft-gradient-section mt-6 py-1">
+      <div className="mt-5 space-y-1">
         <TechLane items={lanes[0]} direction="right" duration={42 + index * 2} />
         <TechLane items={lanes[1]} direction="left" duration={36 + index * 2} />
         <TechLane items={lanes[2]} direction="right" duration={46 + index * 2} />
@@ -362,8 +358,7 @@ export default function StackPage() {
           <FadeInBlock>
             <div className="grid gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
               <div>
-                <p className="text-[11px] tracking-[0.22em] text-[#111]/46 uppercase">Направления</p>
-                <div className="mt-7">
+                <div>
                   {roleRows.map((role) => {
                     const highlighted = isRoleHighlighted(role)
 
@@ -404,8 +399,7 @@ export default function StackPage() {
               </div>
 
               <div>
-                <p className="text-[11px] tracking-[0.22em] text-[#111]/46 uppercase">Рабочий набор</p>
-                <div className="mt-7 flex flex-wrap gap-2.5">
+                <div className="flex flex-wrap gap-2.5">
                   {competencyTags.map((competency) => {
                     const highlighted = isCompetencyHighlighted(competency)
 
