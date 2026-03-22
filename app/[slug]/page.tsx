@@ -78,7 +78,7 @@ export default async function RoutePage({ params }: RoutePageProps) {
   }
 
   return (
-    <main className="relative isolate min-h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
+    <main className="relative isolate min-h-screen overflow-x-clip bg-[#f6f4ef] text-[#111111]">
       <RouteAtmosphere blobs={atmosphere} />
       <header className="sticky inset-x-0 top-0 z-20 border-b border-black/10 bg-[#f7f5ef]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6">
@@ -94,7 +94,7 @@ export default async function RoutePage({ params }: RoutePageProps) {
       </header>
 
       <section className="relative z-10 mx-auto max-w-6xl px-6 py-[clamp(88px,10vh,120px)]">
-        <h1 className="mt-3 w-[108%] text-[clamp(44px,9vw,132px)] leading-[0.84] tracking-[-0.05em]">{detail.title}</h1>
+        <h1 className="mt-3 w-full md:w-[108%] text-[clamp(44px,9vw,132px)] leading-[0.84] tracking-[-0.05em]">{detail.title}</h1>
         <p className="mt-5 max-w-[72ch] text-[clamp(17px,1.7vw,28px)] leading-[1.2] text-[#111]/82">{detail.subtitle}</p>
         <p className="mt-4 max-w-[76ch] text-base leading-relaxed text-[#111]/72">{detail.description}</p>
 

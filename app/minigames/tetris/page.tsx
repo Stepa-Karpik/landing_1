@@ -441,10 +441,10 @@ export default function TetrisPage() {
   }, [game.active, game.board])
 
   return (
-    <main className="h-screen overflow-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] sm:px-3">
-      <section className="mx-auto flex h-full w-full max-w-[1620px] flex-col gap-3 lg:flex-row">
-        <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-black/14 bg-[linear-gradient(180deg,#fffdfa_0%,#f7f2ea_100%)] p-2 shadow-[0_10px_36px_rgba(0,0,0,0.07)]">
-          <div className="h-full max-h-[86vh] w-auto aspect-[1/2] rounded-xl border border-black/20 bg-[#1d1f28] p-1.5">
+    <main className="min-h-screen overflow-x-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] xl:h-screen xl:overflow-hidden sm:px-3">
+      <section className="mx-auto flex min-h-[calc(100dvh-1.5rem)] w-full max-w-[1620px] flex-col gap-3 xl:h-full xl:min-h-0 xl:flex-row">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-black/14 bg-[linear-gradient(180deg,#fffdfa_0%,#f7f2ea_100%)] p-3 shadow-[0_10px_36px_rgba(0,0,0,0.07)] sm:p-4 xl:p-2">
+          <div className="aspect-[1/2] w-full max-w-[min(100%,460px)] rounded-xl border border-black/20 bg-[#1d1f28] p-1.5 xl:h-full xl:max-h-[86vh] xl:w-auto xl:max-w-none">
             <div className="grid h-full w-full grid-cols-10 grid-rows-20 gap-[2px] rounded-[10px] bg-black/30 p-[2px]">
               {Array.from({ length: ROWS * COLS }).map((_, index) => {
                 const row = Math.floor(index / COLS)
@@ -472,8 +472,8 @@ export default function TetrisPage() {
           </div>
         </div>
 
-        <aside className="grid w-full shrink-0 grid-cols-2 gap-2 lg:w-[360px] lg:grid-cols-1 lg:gap-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
+        <aside className="grid w-full shrink-0 grid-cols-2 gap-2 xl:w-[360px] xl:grid-cols-1 xl:gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
             <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
               <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Score</p>
               <p className="mt-1 text-xl font-semibold">{game.score}</p>

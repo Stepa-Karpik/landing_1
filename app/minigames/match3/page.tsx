@@ -317,8 +317,8 @@ export default function Match3Page() {
   const bestScore = data.gameStats.match3.bestScore
 
   return (
-    <main className="h-screen overflow-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] sm:px-3">
-      <section className="mx-auto flex h-full max-w-[1620px] flex-col gap-3">
+    <main className="min-h-screen overflow-x-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] md:h-screen md:overflow-hidden sm:px-3">
+      <section className="mx-auto flex min-h-[calc(100dvh-1.5rem)] max-w-[1620px] flex-col gap-3 md:h-full md:min-h-0">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
             <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Score</p>

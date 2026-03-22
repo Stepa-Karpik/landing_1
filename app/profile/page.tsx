@@ -186,11 +186,11 @@ export default function ProfilePage() {
   const activeGame = miniGames[activeGameIndex]
 
   return (
-    <main className="relative h-screen overflow-hidden bg-[linear-gradient(145deg,#d9f6ec_0%,#f7dcec_68%,#fbe5ef_100%)] px-2 pb-2 pt-20 text-[#111111] md:px-5">
+    <main className="relative min-h-screen overflow-x-hidden bg-[linear-gradient(145deg,#d9f6ec_0%,#f7dcec_68%,#fbe5ef_100%)] px-2 pb-2 pt-20 text-[#111111] md:h-screen md:overflow-hidden md:px-5">
       <div className="pointer-events-none absolute -left-24 top-6 h-[440px] w-[440px] rounded-full bg-[#8ed9ff]/35 blur-[96px]" />
       <div className="pointer-events-none absolute -right-20 bottom-0 h-[480px] w-[480px] rounded-full bg-[#ff8db6]/28 blur-[100px]" />
 
-      <div className="relative z-10 mx-auto flex h-full w-full max-w-[1720px] flex-col gap-3">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-5.5rem)] w-full max-w-[1720px] flex-col gap-3 md:h-full md:min-h-0">
         <section className="rounded-2xl border border-black/10 bg-[#fff6fb]/74 p-4 shadow-[0_18px_52px_rgba(58,17,37,0.14)] backdrop-blur-sm md:p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <h1 className="text-[clamp(28px,4.2vw,52px)] font-semibold leading-[0.9] tracking-[-0.03em]">Профиль</h1>

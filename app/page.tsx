@@ -4,13 +4,12 @@ import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { MENU_RESTORE_ON_NEXT_VISIT_KEY, MENU_SCROLL_LEFT_STORAGE_KEY } from "@/lib/menu-scroll-state"
 
+const DESKTOP_LAYOUT_QUERY = "(min-width: 768px)"
 const LINES_COUNT = 20
 const LINE_WIDTH = 1
 const LINE_GAP = 9
 const TRACKER_WIDTH = 30
 const MIN_FRAME_SCALE = 1 / 1.5
-const LAST_FRAME_INDEX = 8
-const WORD_FRAME_INDEXES = [1, 2, 3, 4, 5, 6]
 const TEXT_PROGRESS_POWER = 1.45
 const WHEEL_SCROLL_MULTIPLIER = 0.5
 const WHEEL_MAX_INPUT = 240
@@ -18,6 +17,32 @@ const WHEEL_MAX_VELOCITY = 260
 const WHEEL_FRICTION = 0.72
 const WHEEL_STOP_THRESHOLD = 0.35
 const WHEEL_LINE_HEIGHT = 16
+
+interface FrameAccent {
+  color: string
+  size: string
+  top?: string
+  right?: string
+  bottom?: string
+  left?: string
+  transform?: string
+}
+
+interface RouteFrame {
+  label: string
+  word: string
+  href: string
+  accent?: FrameAccent
+}
+
+const introLines = [
+  { text: "Возьми" },
+  { text: "Телефон,", offset: true },
+  { text: "Детка!" },
+  { text: "Мы знаем, что ты", offset: true },
+  { text: "Хочешь позвонить" },
+  { text: "Нам сегодня.", offset: true },
+]
 
 const manifestoLines = [
   "Делать системно.",
@@ -27,6 +52,61 @@ const manifestoLines = [
   "Делать надолго.",
   "Делать чисто.",
   "Делать.",
+]
+
+const routeFrames: RouteFrame[] = [
+  {
+    label: "Состав",
+    word: "Состав",
+    href: "/sostav",
+    accent: {
+      color: "#ff6100",
+      size: "clamp(420px,56vh,760px)",
+      right: "-28%",
+      top: "50%",
+      transform: "translateY(-50%)",
+    },
+  },
+  {
+    label: "Люди",
+    word: "Люди",
+    href: "/lyudi",
+  },
+  {
+    label: "Стэк",
+    word: "Стэк",
+    href: "/stek",
+    accent: {
+      color: "#37c978",
+      size: "clamp(340px,48vh,620px)",
+      left: "-16%",
+      top: "-16%",
+    },
+  },
+  {
+    label: "Подход",
+    word: "Подход",
+    href: "/craft",
+  },
+  {
+    label: "Вектор",
+    word: "Вектор",
+    href: "/works",
+  },
+]
+
+const FIRST_ROUTE_FRAME_INDEX = 1
+const LAST_ROUTE_FRAME_INDEX = routeFrames.length
+const WORD_FRAME_INDEXES = routeFrames.map((_, index) => index + FIRST_ROUTE_FRAME_INDEX)
+const MANIFESTO_FRAME_INDEX = LAST_ROUTE_FRAME_INDEX + 1
+const CONTACTS_FRAME_INDEX = MANIFESTO_FRAME_INDEX + 1
+const LAST_FRAME_INDEX = CONTACTS_FRAME_INDEX
+
+const contactItems = [
+  { label: "Telegram", href: "https://t.me/Vozmi_telefon_detka_rnd" },
+  { label: "Website", href: "https://nerior.ru" },
+  { label: "Contact", href: "/lyudi" },
+  { label: "GitHub", href: "https://github.com/Nerior-team" },
 ]
 
 function clamp(value: number, min: number, max: number) {
@@ -71,16 +151,8 @@ function FrameLabel({ children }: { children: string }) {
   return <div className="absolute -top-[30px] left-0 text-sm text-[#6f6f6f]">{children}</div>
 }
 
-function MainIntroFrame() {
+function MainIntroFrame({ compact = false }: { compact?: boolean }) {
   const [isIntroVisible, setIsIntroVisible] = useState(false)
-  const lines = [
-    { text: "Возьми" },
-    { text: "Телефон,", offset: true },
-    { text: "Детка!" },
-    { text: "Мы знаем, что ты", offset: true },
-    { text: "Хочешь позвонить" },
-    { text: "Нам сегодня.", offset: true },
-  ]
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -96,6 +168,13 @@ function MainIntroFrame() {
     return () => window.cancelAnimationFrame(frameId)
   }, [])
 
+  const circleClass = compact
+    ? "absolute right-[-18%] top-[-2%] h-[72%] aspect-square rounded-full bg-[#ffff02]"
+    : "absolute right-0 top-0 h-full aspect-square rounded-full bg-[#ffff02]"
+  const containerClass = compact ? "relative flex h-full items-center gap-8 p-6 text-[#141519]" : "relative flex h-full items-center gap-16 p-16 text-[#141519]"
+  const offsetClass = compact ? "ml-8 sm:ml-12 " : "ml-16 "
+  const lineClass = compact ? "overflow-hidden text-[clamp(38px,10vw,72px)] leading-[0.96] font-medium" : "overflow-hidden text-[clamp(44px,6vw,85px)] leading-[0.98] font-medium"
+
   return (
     <article className="relative h-full w-full overflow-hidden">
       <div
@@ -108,7 +187,7 @@ function MainIntroFrame() {
         }}
       >
         <div
-          className="absolute right-0 top-0 h-full aspect-square rounded-full bg-[#ffff02] transition-[transform,opacity] duration-[980ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+          className={circleClass}
           style={{
             transform: isIntroVisible ? "scale(1)" : "scale(0.62)",
             opacity: isIntroVisible ? 1 : 0,
@@ -117,21 +196,17 @@ function MainIntroFrame() {
             willChange: "transform, opacity",
           }}
         />
-        <div className="relative flex h-full items-center gap-16 p-16 text-[#141519]">
+
+        <div className={containerClass}>
           <div className="relative font-brand">
-            {lines.map((line, index) => (
-              <p
-                key={line.text}
-                className={
-                  (line.offset ? "ml-16 " : "") + "overflow-hidden text-[clamp(44px,6vw,85px)] leading-[0.98] font-medium"
-                }
-              >
+            {introLines.map((line, index) => (
+              <p key={line.text} className={(line.offset ? offsetClass : "") + lineClass}>
                 <span
                   className="block transition-[transform,opacity] duration-[760ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                   style={{
                     transform: isIntroVisible ? "translateY(0)" : "translateY(32px)",
                     opacity: isIntroVisible ? 1 : 0,
-                    transitionDelay: (220 + index * 90) + "ms",
+                    transitionDelay: `${220 + index * 90}ms`,
                     willChange: "transform, opacity",
                   }}
                 >
@@ -156,15 +231,7 @@ function WordFrame({
   label: string
   word: string
   href: string
-  accent?: {
-    color: string
-    size: string
-    top?: string
-    right?: string
-    bottom?: string
-    left?: string
-    transform?: string
-  }
+  accent?: FrameAccent
   textProgress?: number
 }) {
   const external = href.startsWith("http")
@@ -197,7 +264,7 @@ function WordFrame({
           <h2
             ref={textRef}
             aria-hidden
-            className="inline-block whitespace-nowrap select-none px-2 text-[clamp(240px,36vw,720px)] leading-[0.88] tracking-[-0.05em] text-black"
+            className="inline-block whitespace-nowrap px-2 text-[clamp(240px,36vw,720px)] leading-[0.88] tracking-[-0.05em] text-black"
             style={{ transform: `translateX(${-textShift}px)` }}
           >
             {word}
@@ -237,10 +304,54 @@ function WordFrame({
   )
 }
 
-function ManifestoFrame() {
+function MobileWordFrame({ label, word, href, accent }: RouteFrame) {
+  const external = href.startsWith("http")
+  const accentStyle = accent
+    ? {
+        background: accent.color,
+        width: "clamp(180px,48vw,260px)",
+        height: "clamp(180px,48vw,260px)",
+        top: accent.top ? (accent.top === "50%" ? "54%" : accent.top) : undefined,
+        right: accent.right ? "-18%" : undefined,
+        bottom: accent.bottom ? "-28%" : undefined,
+        left: accent.left ? "-16%" : undefined,
+        transform: accent.transform,
+      }
+    : null
+
+  const content = (
+    <article className="relative overflow-hidden rounded-[28px] bg-[#f4f4f4] px-5 pb-5 pt-4 shadow-[0_20px_48px_rgba(12,12,12,0.08)]">
+      <span className="text-[11px] tracking-[0.22em] text-[#6f6f6f] uppercase">{label}</span>
+      <div className="relative mt-3 min-h-[170px] overflow-hidden rounded-[20px] bg-white/35 px-4 py-5">
+        <h2 className="relative z-10 max-w-[5ch] text-[clamp(64px,20vw,132px)] leading-[0.9] tracking-[-0.06em] text-black">
+          {word}
+        </h2>
+        {accentStyle && <div className="pointer-events-none absolute z-0 rounded-full" style={accentStyle} />}
+      </div>
+    </article>
+  )
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className="block outline-none">
+        {content}
+      </a>
+    )
+  }
+
   return (
-    <article className="h-full w-full bg-[#ffff02] p-[50px] text-black">
-      <p className="font-playfair text-[clamp(38px,5.25vw,75px)] leading-[1.08] font-medium">
+    <Link href={href} className="block outline-none">
+      {content}
+    </Link>
+  )
+}
+
+function ManifestoFrame({ compact = false }: { compact?: boolean }) {
+  return (
+    <article className={`h-full w-full bg-[#ffff02] text-black ${compact ? "p-6" : "p-[50px]"}`}>
+      <p
+        className={`font-playfair font-medium ${compact ? "text-[clamp(28px,8vw,52px)] leading-[1.04]" : "text-[clamp(38px,5.25vw,75px)] leading-[1.08]"}`}
+      >
         {manifestoLines.map((line) => (
           <span key={line} className="block">
             {line}
@@ -251,7 +362,7 @@ function ManifestoFrame() {
   )
 }
 
-function ContactsFrame() {
+function ContactsFrame({ compact = false }: { compact?: boolean }) {
   const emailToCopy = "i@karpovstepan.ru"
   const [copied, setCopied] = useState(false)
   const resetTimerRef = useRef<number | null>(null)
@@ -277,6 +388,58 @@ function ContactsFrame() {
     } catch {
       setCopied(false)
     }
+  }
+
+  if (compact) {
+    return (
+      <article className="grid gap-4 rounded-[28px] bg-[#f4f4f4] p-5 font-montserrat shadow-[0_20px_48px_rgba(12,12,12,0.08)]">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {contactItems.map((item) => {
+            const external = item.href.startsWith("http")
+            const commonClass =
+              "flex min-h-[72px] items-center rounded-[22px] border border-black/10 bg-white/45 px-4 text-[clamp(26px,7vw,44px)] leading-none text-[#191a1e] transition-colors hover:bg-white/65"
+
+            if (item.label === "Contact") {
+              return (
+                <Link key={item.label} href={item.href} className={commonClass}>
+                  {item.label}
+                </Link>
+              )
+            }
+
+            return (
+              <a key={item.label} href={item.href} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined} className={commonClass}>
+                {item.label}
+              </a>
+            )
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleCopyEmail}
+          aria-label={copied ? "Скопировано" : "Скопировать email"}
+          className="flex min-h-[84px] items-center justify-center rounded-[24px] border border-black/12 bg-white/55 text-[clamp(28px,8vw,48px)] leading-none text-[#191a1e]"
+        >
+          <span className="grid place-items-center overflow-hidden">
+            <span
+              className={`col-start-1 row-start-1 transition-all duration-300 ${
+                copied ? "-translate-y-[120%] opacity-0" : "translate-y-0 opacity-100"
+              }`}
+            >
+              Email
+            </span>
+            <span
+              className={`col-start-1 row-start-1 transition-all duration-300 ${
+                copied ? "translate-y-0 opacity-100" : "translate-y-[120%] opacity-0"
+              }`}
+            >
+              Скопировано
+            </span>
+          </span>
+        </button>
+      </article>
+    )
   }
 
   return (
@@ -341,6 +504,7 @@ function ContactsFrame() {
 export default function Page() {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const frameRefs = useRef<Array<HTMLDivElement | null>>([])
+  const [desktopLayout, setDesktopLayout] = useState(false)
   const [progress, setProgress] = useState(0)
   const [frameScale, setFrameScale] = useState(1)
   const [frameWidth, setFrameWidth] = useState(0)
@@ -348,6 +512,17 @@ export default function Page() {
   const [textProgressByFrame, setTextProgressByFrame] = useState<Record<number, number>>({})
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia(DESKTOP_LAYOUT_QUERY)
+    const syncLayout = () => setDesktopLayout(mediaQuery.matches)
+
+    syncLayout()
+    mediaQuery.addEventListener("change", syncLayout)
+    return () => mediaQuery.removeEventListener("change", syncLayout)
+  }, [])
+
+  useEffect(() => {
+    if (!desktopLayout) return
+
     const previousBodyOverflow = document.body.style.overflowY
     const previousHtmlOverflow = document.documentElement.style.overflowY
     document.body.style.overflowY = "hidden"
@@ -357,9 +532,11 @@ export default function Page() {
       document.body.style.overflowY = previousBodyOverflow
       document.documentElement.style.overflowY = previousHtmlOverflow
     }
-  }, [])
+  }, [desktopLayout])
 
   useEffect(() => {
+    if (!desktopLayout) return
+
     const scroller = scrollerRef.current
     if (!scroller) return
     let initialRestoreScrollLeft = 0
@@ -484,7 +661,7 @@ export default function Page() {
       try {
         window.sessionStorage.setItem(MENU_SCROLL_LEFT_STORAGE_KEY, String(nextScrollLeft))
       } catch {
-        // Ignore storage access errors (private mode/restricted settings).
+        // Ignore storage access errors.
       }
 
       const nextTextProgress: Record<number, number> = {}
@@ -533,150 +710,104 @@ export default function Page() {
         window.cancelAnimationFrame(wheelRafId)
       }
     }
-  }, [])
+  }, [desktopLayout])
 
   const railPadding = useMemo(() => "max(30px, calc((100vw - clamp(920px, 78vw, 1200px)) / 2))", [])
   const spacingCompensation = frameWidth * (1 - frameScale)
   const getFrameTransform = (index: number) => `translateX(${-index * spacingCompensation}px) scale(${frameScale})`
 
   return (
-    <main className="relative h-screen overflow-hidden bg-[#ededed]">
-      <Minimap progress={progress} />
-      <CenterCross />
-
-      <div
-        ref={scrollerRef}
-        className="flex h-full w-full touch-pan-x items-center gap-10 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ paddingInline: railPadding }}
-      >
-        <div
-          ref={(element) => {
-            frameRefs.current[0] = element
-          }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: getFrameTransform(0) }}
-        >
-          <MainIntroFrame />
+    <main className="relative min-h-screen bg-[#ededed] md:h-screen md:overflow-hidden">
+      <section className="relative z-10 flex flex-col gap-5 px-4 pb-6 pt-6 md:hidden">
+        <div className="h-[min(64vh,520px)] min-h-[360px] overflow-hidden rounded-[28px]">
+          <MainIntroFrame compact />
         </div>
 
+        {routeFrames.map((frame) => (
+          <MobileWordFrame key={frame.href} {...frame} />
+        ))}
+
+        <div className="overflow-hidden rounded-[28px]">
+          <ManifestoFrame compact />
+        </div>
+
+        <ContactsFrame compact />
+      </section>
+
+      <section className="hidden md:block h-screen overflow-hidden">
+        <Minimap progress={progress} />
+        <CenterCross />
+
         <div
-          ref={(element) => {
-            frameRefs.current[1] = element
-          }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center transition-[opacity,transform] duration-200 ease-out"
-          style={{
-            transform: `${getFrameTransform(1)} translateY(${(1 - secondFrameReveal) * 18}px)`,
-            opacity: 0.12 + secondFrameReveal * 0.88,
-            willChange: "transform, opacity",
-          }}
+          ref={scrollerRef}
+          className="flex h-full w-full touch-pan-x items-center gap-10 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{ paddingInline: railPadding }}
         >
-          <WordFrame
-            label="Состав"
-            word="Состав"
-            href="/sostav"
-            accent={{
-              color: "#ff6100",
-              size: "clamp(420px,56vh,760px)",
-              right: "-28%",
-              top: "50%",
-              transform: "translateY(-50%)",
+          <div
+            ref={(element) => {
+              frameRefs.current[0] = element
             }}
-            textProgress={textProgressByFrame[1] ?? 0}
-          />
-        </div>
+            className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+            style={{ transform: getFrameTransform(0) }}
+          >
+            <MainIntroFrame />
+          </div>
 
-        <div
-          ref={(element) => {
-            frameRefs.current[2] = element
-          }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: getFrameTransform(2) }}
-        >
-          <WordFrame label="Люди" word="Люди" href="/lyudi" textProgress={textProgressByFrame[2] ?? 0} />
-        </div>
+          {routeFrames.map((frame, routeIndex) => {
+            const frameIndex = routeIndex + FIRST_ROUTE_FRAME_INDEX
+            const isRevealedFrame = frameIndex === FIRST_ROUTE_FRAME_INDEX
 
-        <div
-          ref={(element) => {
-            frameRefs.current[3] = element
-          }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: getFrameTransform(3) }}
-        >
-          <WordFrame
-            label="Стэк"
-            word="Стэк"
-            href="/stek"
-            accent={{
-              color: "#37c978",
-              size: "clamp(340px,48vh,620px)",
-              left: "-16%",
-              top: "-16%",
+            return (
+              <div
+                key={frame.href}
+                ref={(element) => {
+                  frameRefs.current[frameIndex] = element
+                }}
+                className={`relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center ${
+                  isRevealedFrame ? "transition-[opacity,transform] duration-200 ease-out" : ""
+                }`}
+                style={
+                  isRevealedFrame
+                    ? {
+                        transform: `${getFrameTransform(frameIndex)} translateY(${(1 - secondFrameReveal) * 18}px)`,
+                        opacity: 0.12 + secondFrameReveal * 0.88,
+                        willChange: "transform, opacity",
+                      }
+                    : { transform: getFrameTransform(frameIndex) }
+                }
+              >
+                <WordFrame
+                  label={frame.label}
+                  word={frame.word}
+                  href={frame.href}
+                  accent={frame.accent}
+                  textProgress={textProgressByFrame[frameIndex] ?? 0}
+                />
+              </div>
+            )
+          })}
+
+          <div
+            ref={(element) => {
+              frameRefs.current[MANIFESTO_FRAME_INDEX] = element
             }}
-            textProgress={textProgressByFrame[3] ?? 0}
-          />
-        </div>
+            className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+            style={{ transform: getFrameTransform(MANIFESTO_FRAME_INDEX) }}
+          >
+            <ManifestoFrame />
+          </div>
 
-        <div
-          ref={(element) => {
-            frameRefs.current[4] = element
-          }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: getFrameTransform(4) }}
-        >
-          <WordFrame label="Подход" word="Подход" href="/craft" textProgress={textProgressByFrame[4] ?? 0} />
-        </div>
-
-        <div
-          ref={(element) => {
-            frameRefs.current[5] = element
-          }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: getFrameTransform(5) }}
-        >
-          <WordFrame
-            label="Результат"
-            word="Результат"
-            href="/projects"
-            accent={{
-              color: "#4f7cff",
-              size: "clamp(360px,52vh,680px)",
-              right: "-20%",
-              bottom: "-22%",
+          <div
+            ref={(element) => {
+              frameRefs.current[CONTACTS_FRAME_INDEX] = element
             }}
-            textProgress={textProgressByFrame[5] ?? 0}
-          />
+            className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
+            style={{ transform: getFrameTransform(CONTACTS_FRAME_INDEX) }}
+          >
+            <ContactsFrame />
+          </div>
         </div>
-
-        <div
-          ref={(element) => {
-            frameRefs.current[6] = element
-          }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: getFrameTransform(6) }}
-        >
-          <WordFrame label="Вектор" word="Вектор" href="/works" textProgress={textProgressByFrame[6] ?? 0} />
-        </div>
-
-        <div
-          ref={(element) => {
-            frameRefs.current[7] = element
-          }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: getFrameTransform(7) }}
-        >
-          <ManifestoFrame />
-        </div>
-
-        <div
-          ref={(element) => {
-            frameRefs.current[8] = element
-          }}
-          className="relative h-[clamp(560px,72vh,720px)] w-[clamp(920px,78vw,1200px)] shrink-0 origin-center"
-          style={{ transform: getFrameTransform(8) }}
-        >
-          <ContactsFrame />
-        </div>
-      </div>
+      </section>
     </main>
   )
 }

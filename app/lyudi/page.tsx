@@ -5,6 +5,7 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react"
 import { RouteAtmosphere, type AtmosphereBlob } from "@/components/route-atmosphere"
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)"
+const DESKTOP_LAYOUT_QUERY = "(min-width: 1280px)"
 const PANEL_SIZE_CLASS = "h-[clamp(500px,80vh,860px)] w-[clamp(320px,92vw,1320px)]"
 
 const WHEEL_SCROLL_MULTIPLIER = 0.5
@@ -185,11 +186,21 @@ export default function PeoplePage() {
   const cardRefs = useRef<Array<HTMLElement | null>>([])
   const copyResetTimerRef = useRef<number | null>(null)
 
+  const [desktopLayout, setDesktopLayout] = useState(false)
   const [introVisible, setIntroVisible] = useState(false)
   const [finalVisible, setFinalVisible] = useState(false)
   const [activeCardIndex, setActiveCardIndex] = useState(0)
   const [focusByCard, setFocusByCard] = useState<number[]>(() => teamPeople.map(() => 0))
   const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(DESKTOP_LAYOUT_QUERY)
+    const syncLayout = () => setDesktopLayout(mediaQuery.matches)
+
+    syncLayout()
+    mediaQuery.addEventListener("change", syncLayout)
+    return () => mediaQuery.removeEventListener("change", syncLayout)
+  }, [])
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -206,6 +217,8 @@ export default function PeoplePage() {
   }, [])
 
   useEffect(() => {
+    if (!desktopLayout) return
+
     const previousBodyOverflow = document.body.style.overflowY
     const previousHtmlOverflow = document.documentElement.style.overflowY
     document.body.style.overflowY = "hidden"
@@ -215,7 +228,7 @@ export default function PeoplePage() {
       document.body.style.overflowY = previousBodyOverflow
       document.documentElement.style.overflowY = previousHtmlOverflow
     }
-  }, [])
+  }, [desktopLayout])
 
   useEffect(() => {
     return () => {
@@ -243,6 +256,8 @@ export default function PeoplePage() {
   }
 
   useEffect(() => {
+    if (!desktopLayout) return
+
     const scroller = scrollerRef.current
     if (!scroller) return
 
@@ -389,9 +404,11 @@ export default function PeoplePage() {
         window.cancelAnimationFrame(focusRafId)
       }
     }
-  }, [])
+  }, [desktopLayout])
 
   useEffect(() => {
+    if (!desktopLayout) return
+
     const scroller = scrollerRef.current
     const finalSection = finalRef.current
     if (!scroller || !finalSection) return
@@ -409,16 +426,154 @@ export default function PeoplePage() {
 
     observer.observe(finalSection)
     return () => observer.disconnect()
-  }, [])
+  }, [desktopLayout])
 
   const railPadding = useMemo(() => "max(20px, calc((100vw - clamp(320px, 92vw, 1320px)) / 2))", [])
 
   return (
-    <main className="relative isolate h-screen overflow-hidden bg-[#f6f4ef] text-[#111111]">
-      <RouteAtmosphere blobs={lyudiAtmosphereBlobs} scrollContainer={scrollerRef} />
+    <main className="relative isolate min-h-screen bg-[#f6f4ef] text-[#111111] xl:h-screen xl:overflow-hidden">
+      <RouteAtmosphere blobs={lyudiAtmosphereBlobs} scrollContainer={desktopLayout ? scrollerRef : undefined} />
+
+      <section className="relative z-10 flex flex-col gap-5 px-4 pb-6 pt-6 xl:hidden">
+        <article className="soft-gradient-card soft-gradient-rails relative overflow-hidden rounded-[28px] border border-black/0 bg-[linear-gradient(145deg,rgba(255,255,255,0.46),rgba(248,245,240,0.82))] px-6 py-7 shadow-[0_26px_70px_rgba(17,17,17,0.06)]">
+          <div className="grid gap-6 sm:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] sm:items-end sm:gap-8">
+            <div>
+              <h1
+                className="text-[clamp(48px,16vw,116px)] leading-[0.82] tracking-[-0.055em]"
+                style={{
+                  opacity: introVisible ? 1 : 0,
+                  transform: introVisible ? "translateY(0px)" : "translateY(24px)",
+                  transition: `opacity 450ms ${EASE}, transform 450ms ${EASE}`,
+                }}
+              >
+                ЛЮДИ
+              </h1>
+              <div className="pointer-events-none mt-5 h-[2px] w-[clamp(96px,18vw,180px)] bg-gradient-to-r from-[#4a8fe4]/75 via-[#7a4fd8]/70 to-transparent" />
+            </div>
+
+            <p
+              className="max-w-[28ch] text-[clamp(19px,5.8vw,30px)] leading-[1.14] tracking-[-0.02em] text-[#111]/82"
+              style={{
+                opacity: introVisible ? 1 : 0,
+                transform: introVisible ? "translateY(0px)" : "translateY(24px)",
+                transition: `opacity 450ms ${EASE} 90ms, transform 450ms ${EASE} 90ms`,
+              }}
+            >
+              <span className="block">6 ролей. Один ритм.</span>
+              <span className="block">Каждый слой продукта закрыт вовремя и без суеты.</span>
+            </p>
+          </div>
+        </article>
+
+        {teamPeople.map((person) => (
+          <article
+            key={person.id}
+            className="soft-gradient-card soft-gradient-rails relative overflow-hidden rounded-[28px] border border-black/0 bg-[linear-gradient(145deg,rgba(255,255,255,0.4),rgba(248,245,240,0.8))] p-5 shadow-[0_22px_60px_rgba(17,17,17,0.06)]"
+          >
+            <span className="pointer-events-none absolute right-5 top-5 text-[11px] tracking-[0.2em] text-[#111]/56 uppercase">
+              {person.status}
+            </span>
+
+            <div className="grid gap-5 sm:grid-cols-[minmax(220px,0.42fr)_minmax(0,0.58fr)] sm:items-start sm:gap-6">
+              <figure className="soft-gradient-card relative aspect-[4/5] overflow-hidden rounded-[24px] border border-black/0 bg-[#eceae5] sm:min-h-[280px] sm:aspect-auto">
+                {person.photoSrc ? (
+                  <>
+                    <Image
+                      src={person.photoSrc}
+                      alt={person.name}
+                      fill
+                      sizes="(max-width: 1279px) 92vw, 34vw"
+                      className="object-cover"
+                    />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/18 via-black/2 to-black/10" />
+                    <span className="absolute left-5 bottom-4 text-[13px] tracking-[0.16em] text-white/76 uppercase">{person.monogram}</span>
+                  </>
+                ) : (
+                  <span className="absolute left-5 bottom-5 text-[clamp(42px,5.8vw,94px)] leading-[0.86] tracking-[-0.04em] text-[#111]/82">
+                    {person.monogram}
+                  </span>
+                )}
+              </figure>
+
+              <div className="flex flex-col">
+                <h2 className="text-[clamp(30px,8vw,52px)] leading-[0.92] tracking-[-0.04em]">{person.name}</h2>
+                <p className="mt-3 max-w-[38ch] text-[clamp(17px,4.6vw,22px)] leading-[1.2] text-[#111]/82">{person.role}</p>
+                <p className="mt-5 max-w-[42ch] text-[15px] leading-[1.42] text-[#111]/74">{person.focus}</p>
+                <p className="mt-4 max-w-[42ch] text-[12px] leading-[1.48] tracking-[0.04em] text-[#111]/58 uppercase">{person.stack}</p>
+
+                <QuoteFrame quote={person.quote} className="mt-6 min-h-[148px] w-full max-w-none px-5 py-6" />
+
+                <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] tracking-[0.12em] text-[#111]/62 uppercase">
+                  {person.githubUrl ? (
+                    <a
+                      href={person.githubUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-colors duration-200 hover:text-black focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                    >
+                      {person.githubLabel ?? "GitHub"}
+                    </a>
+                  ) : (
+                    <span className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.22),rgba(122,79,216,0.18),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] text-[#111]/46">
+                      {person.githubLabel ?? "GitHub — placeholder"}
+                    </span>
+                  )}
+
+                  {person.telegramUrl ? (
+                    <a
+                      href={person.telegramUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-colors duration-200 hover:text-black focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                    >
+                      Telegram
+                    </a>
+                  ) : (
+                    <span className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.22),rgba(122,79,216,0.18),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] text-[#111]/46">
+                      Telegram — placeholder
+                    </span>
+                  )}
+
+                  {person.email ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleCopyEmail(person.id, person.email)
+                      }}
+                      className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.4),rgba(122,79,216,0.34),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] transition-colors duration-200 hover:text-black focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black/30"
+                    >
+                      {copiedEmailId === person.id ? "Email — copied" : "Email — copy"}
+                    </button>
+                  ) : (
+                    <span className="inline-block bg-[linear-gradient(90deg,rgba(74,143,228,0.22),rgba(122,79,216,0.18),rgba(17,17,17,0))] bg-[length:100%_1px] bg-[position:0_100%] bg-no-repeat pb-[2px] text-[#111]/46">
+                      Email — placeholder
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </article>
+        ))}
+
+        <section className="soft-gradient-card soft-gradient-rails relative overflow-hidden rounded-[28px] border border-black/0 bg-[linear-gradient(145deg,rgba(255,255,255,0.42),rgba(248,245,240,0.82))] px-6 py-7 shadow-[0_26px_70px_rgba(17,17,17,0.06)]">
+          <div className="grid max-w-[1040px] gap-5 sm:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] sm:items-end sm:gap-8">
+            <div>
+              <div className="mb-5 h-[2px] w-[clamp(120px,24vw,220px)] bg-gradient-to-r from-[#4a8fe4]/82 via-[#7a4fd8]/78 to-transparent" />
+              <h2 className="text-[clamp(36px,10vw,72px)] leading-[0.9] tracking-[-0.05em]">
+              СОБРАНЫ КАК СИСТЕМА
+              </h2>
+            </div>
+            <p className="max-w-[34ch] text-[clamp(18px,5vw,28px)] leading-[1.2] tracking-[-0.02em] text-[#111]/82 sm:justify-self-end">
+              <span className="block">В решающие 48 часов работает не шум.</span>
+              <span className="block">Работают роли, темп и доверие внутри команды.</span>
+            </p>
+          </div>
+        </section>
+      </section>
+
       <div
         ref={scrollerRef}
-        className="relative z-10 flex h-full w-full touch-pan-x items-center gap-[clamp(64px,6vw,108px)] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="hidden xl:flex h-screen w-full touch-pan-x items-center gap-[clamp(64px,6vw,108px)] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ paddingInline: railPadding }}
       >
         <section
@@ -505,7 +660,7 @@ export default function PeoplePage() {
                   )}
                 </figure>
 
-                <div className="relative flex min-h-0 flex-col">
+                <div className="relative flex min-h-0 flex-col 2xl:pb-[clamp(180px,20vh,250px)]">
 
                   <h2
                     className="mt-6 text-[clamp(34px,4.2vw,62px)] leading-[0.92] tracking-[-0.04em]"
@@ -529,7 +684,7 @@ export default function PeoplePage() {
                   <QuoteFrame
                     quote={person.quote}
                     style={contentMotionStyle(220)}
-                    className="mt-8 min-h-[168px] w-full max-w-[620px] self-center md:absolute md:bottom-[clamp(78px,10vh,118px)] md:left-[clamp(18px,1.8vw,34px)] md:mt-0 md:h-[clamp(180px,22vh,236px)] md:w-[clamp(360px,41vw,620px)] md:max-w-none"
+                    className="mt-8 min-h-[168px] w-full max-w-[620px] self-center 2xl:absolute 2xl:bottom-[clamp(78px,10vh,118px)] 2xl:left-[clamp(18px,1.8vw,34px)] 2xl:mt-0 2xl:h-[clamp(180px,22vh,236px)] 2xl:w-[clamp(360px,41vw,620px)] 2xl:max-w-none"
                   />
 
                   <div className="mt-auto flex flex-wrap items-center gap-x-6 gap-y-2 pt-8 text-[11px] tracking-[0.12em] text-[#111]/62 uppercase md:self-end md:flex-nowrap md:justify-end">

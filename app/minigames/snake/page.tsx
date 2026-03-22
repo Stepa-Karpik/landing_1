@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useProfileTracker } from "@/components/profile-provider"
 
 type Direction = "up" | "down" | "left" | "right"
@@ -103,6 +103,10 @@ export default function SnakePage() {
     setGameOver(false)
   }
 
+  const requestDirection = useCallback((desired: Direction) => {
+    setNextDirection((previous) => (isOpposite(previous, desired) ? previous : desired))
+  }, [])
+
   useEffect(() => {
     const updateBoardSize = () => {
       const nextSize = Math.min(window.innerHeight * 0.77, window.innerWidth * 0.84)
@@ -124,12 +128,12 @@ export default function SnakePage() {
       if (!desired) return
 
       event.preventDefault()
-      setNextDirection((previous) => (isOpposite(previous, desired!) ? previous : desired!))
+      requestDirection(desired)
     }
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
+  }, [requestDirection])
 
   useEffect(() => {
     if (gameOver) return
@@ -205,8 +209,8 @@ export default function SnakePage() {
   const snakeSet = useMemo(() => new Set(snake.map(toKey)), [snake])
 
   return (
-    <main className="h-screen overflow-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] sm:px-3">
-      <section className="mx-auto flex h-full max-w-[1620px] flex-col gap-3">
+    <main className="min-h-screen overflow-x-hidden bg-[#f6f4ef] px-2 pb-3 pt-3 text-[#111111] xl:h-screen xl:overflow-hidden sm:px-3">
+      <section className="mx-auto flex min-h-[calc(100dvh-1.5rem)] max-w-[1620px] flex-col gap-3 xl:h-full xl:min-h-0">
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-black/12 bg-white/74 px-3 py-2 text-center">
             <p className="text-[10px] tracking-[0.14em] text-black/56 uppercase">Score</p>
@@ -299,6 +303,48 @@ export default function SnakePage() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="mx-auto grid w-full max-w-[220px] grid-cols-3 gap-2 md:hidden">
+          <div />
+          <button
+            type="button"
+            onClick={() => requestDirection("up")}
+            className="rounded-xl border border-black/16 bg-white/82 px-3 py-2 text-xs tracking-[0.12em] uppercase"
+          >
+            Up
+          </button>
+          <div />
+          <button
+            type="button"
+            onClick={() => requestDirection("left")}
+            className="rounded-xl border border-black/16 bg-white/82 px-3 py-2 text-xs tracking-[0.12em] uppercase"
+          >
+            Left
+          </button>
+          <button
+            type="button"
+            onClick={() => reset()}
+            className="rounded-xl border border-black/16 bg-black px-3 py-2 text-xs tracking-[0.12em] text-white uppercase"
+          >
+            Reset
+          </button>
+          <button
+            type="button"
+            onClick={() => requestDirection("right")}
+            className="rounded-xl border border-black/16 bg-white/82 px-3 py-2 text-xs tracking-[0.12em] uppercase"
+          >
+            Right
+          </button>
+          <div />
+          <button
+            type="button"
+            onClick={() => requestDirection("down")}
+            className="rounded-xl border border-black/16 bg-white/82 px-3 py-2 text-xs tracking-[0.12em] uppercase"
+          >
+            Down
+          </button>
+          <div />
         </div>
 
         {gameOver && (
